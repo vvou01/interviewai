@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Check, Key, User, AlertTriangle, RefreshCw, Eye, EyeOff, Bell, Save } from "lucide-react";
+import { Copy, Check, Key, User, AlertTriangle, RefreshCw, Bell, Save } from "lucide-react";
 
 function Section({ title, icon: Icon, children }) {
   return (

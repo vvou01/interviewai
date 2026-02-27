@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, ArrowRight, Briefcase, TrendingUp, Star, Award, X, Zap } from "lucide-react";
+import { Plus, ArrowRight, Briefcase, TrendingUp, Award, X, Zap } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import StatusBadge from "@/components/shared/StatusBadge";
 import ScoreBadge from "@/components/shared/ScoreBadge";

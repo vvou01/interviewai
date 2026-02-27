@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { createPageUrl } from "@/utils";
 import Sidebar from "./components/layout/Sidebar";
 import MobileNav from "./components/layout/MobileNav";
 
@@ -24,6 +25,13 @@ export default function Layout({ children, currentPageName }) {
       }
       const me = await base44.auth.me();
       setUser(me);
+
+      // Routing guard: redirect incomplete users to onboarding
+      if (!me.onboarding_completed && currentPageName !== "Onboarding") {
+        window.location.href = createPageUrl("Onboarding");
+        return;
+      }
+
       setLoading(false);
     };
     loadUser();

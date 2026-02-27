@@ -52,7 +52,7 @@ export default function Onboarding({ user }) {
   }, [step]);
 
   const createCVMut = useMutation({
-    mutationFn: (data) => base44.entities.CVProfiles.create({ ...data, is_default: true }),
+    mutationFn: (data) => base44.entities.CVProfiles.create({ ...data, is_default: true, created_by: user.id }),
     onSuccess: (created) => {
       setCvProfileName(created?.name || cvForm.name);
       setStep(2);
