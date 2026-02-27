@@ -5,6 +5,7 @@ import MobileNav from "./components/layout/MobileNav";
 
 const publicPages = ["Landing"];
 const focusPages = ["SessionActive"];
+const fullscreenPages = ["Onboarding"];
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
