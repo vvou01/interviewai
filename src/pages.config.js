@@ -54,9 +54,9 @@ import History from './pages/History';
 import Landing from './pages/Landing';
 import NewSession from './pages/NewSession';
 import Onboarding from './pages/Onboarding';
-import SessionReport from './pages/SessionReport';
 import Settings from './pages/Settings';
 import SessionActive from './pages/SessionActive';
+import SessionReport from './pages/SessionReport';
 import __Layout from './Layout.jsx';
 
 
@@ -68,9 +68,9 @@ export const PAGES = {
     "Landing": Landing,
     "NewSession": NewSession,
     "Onboarding": Onboarding,
-    "SessionReport": SessionReport,
     "Settings": Settings,
     "SessionActive": SessionActive,
+    "SessionReport": SessionReport,
 }
 
 export const pagesConfig = {
