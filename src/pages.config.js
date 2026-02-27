@@ -56,6 +56,7 @@ import SessionReport from './pages/SessionReport';
 import History from './pages/History';
 import Settings from './pages/Settings';
 import Billing from './pages/Billing';
+import Onboarding from './pages/Onboarding';
 import __Layout from './Layout.jsx';
 
 
@@ -69,6 +70,7 @@ export const PAGES = {
     "History": History,
     "Settings": Settings,
     "Billing": Billing,
+    "Onboarding": Onboarding,
 }
 
 export const pagesConfig = {
