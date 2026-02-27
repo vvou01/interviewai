@@ -45,6 +45,7 @@ export default function CVProfiles({ user }) {
 
   const saveMut = useMutation({
     mutationFn: async (formData) => {
+      console.log("[CV DEBUG] mutationFn entered", formData)
       console.log("[CV] Step 1 - mutationFn entered, formData:", {
         id: formData.id,
         name: formData.name,
@@ -67,24 +68,29 @@ export default function CVProfiles({ user }) {
         console.log("[CV] Step 4 - UPDATE successful");
       } else {
         console.log("[CV] Step 3 - about to CREATE");
+        console.log("[CV DEBUG] about to call CVProfiles.create")
         await base44.entities.CVProfiles.create({
           name: formData.name,
           cv_text: formData.cv_text,
           is_default: formData.is_default ?? false,
           created_by: userId,
         });
+        console.log("[CV DEBUG] create returned")
         console.log("[CV] Step 4 - CREATE successful");
       }
 
       console.log("[CV] Step 5 - Save complete");
     },
     onSuccess: () => {
+      console.log("[CV DEBUG] onSuccess fired")
       setActionError("");
       qc.invalidateQueries({ queryKey: ["cvProfiles"] });
       setShowForm(false);
       setEditing(null);
     },
     onError: (err) => {
+      console.error("[CV DEBUG] onError fired:", err)
+      console.error("[CV DEBUG] err stringify:", JSON.stringify(err))
       console.error("[CV] Save FAILED:", err);
       console.error("[CV] Error details:", JSON.stringify(err));
       setActionError(err?.message || "Failed to save. Please try again.");
