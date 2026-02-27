@@ -67,11 +67,11 @@
   async function verifyToken(token) {
     try {
       const response = await fetch(
-        `${CONFIG.BASE_URL}/api/entities/Users?limit=1`,
+        `${CONFIG.BASE_URL}/api/apps/${CONFIG.APP_ID}/entities/User/me`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "X-App-ID": CONFIG.APP_ID,
+            "X-App-Id": CONFIG.APP_ID,
           },
           signal: AbortSignal.timeout(CONFIG.API_TIMEOUT_MS),
         }
@@ -79,10 +79,7 @@
 
       if (!response.ok) return null;
 
-      const data = await response.json();
-
-      // Extract user info from response if available
-      const user = data?.results?.[0] || data?.[0] || {};
+      const user = await response.json();
 
       return {
         email: user.email || "Connected",
