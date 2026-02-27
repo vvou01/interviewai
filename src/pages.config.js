@@ -51,6 +51,11 @@ import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import CVProfiles from './pages/CVProfiles';
 import NewSession from './pages/NewSession';
+import SessionActive from './pages/SessionActive';
+import SessionReport from './pages/SessionReport';
+import History from './pages/History';
+import Settings from './pages/Settings';
+import Billing from './pages/Billing';
 import __Layout from './Layout.jsx';
 
 
@@ -59,6 +64,11 @@ export const PAGES = {
     "Dashboard": Dashboard,
     "CVProfiles": CVProfiles,
     "NewSession": NewSession,
+    "SessionActive": SessionActive,
+    "SessionReport": SessionReport,
+    "History": History,
+    "Settings": Settings,
+    "Billing": Billing,
 }
 
 export const pagesConfig = {
