@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-card-hover: rgba(255, 255, 255, 0.07);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-indigo: #6366f1;
+  --accent-violet: #8b5cf6;
+  --accent-blue: #3b82f6;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+@layer base {
+  body {
+    @apply bg-[#0a0e1a] text-slate-100 antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl;
+  }
+  .glass-card-hover {
+    @apply hover:bg-white/[0.07] hover:border-white/[0.12] transition-all duration-300;
+  }
+  .gradient-text {
+    @apply bg-gradient-to-r from-indigo-400 via-violet-400 to-blue-400 bg-clip-text text-transparent;
+  }
+  .gradient-border {
+    @apply border border-transparent;
+    background-image: linear-gradient(rgba(255,255,255,0.04), rgba(255,255,255,0.04)), 
+                      linear-gradient(135deg, #6366f1, #8b5cf6, #3b82f6);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+  }
+  .glow-indigo {
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.15), 0 0 80px rgba(99, 102, 241, 0.05);
+  }
+  .glow-sm {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Override shadcn for dark theme */
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+}
