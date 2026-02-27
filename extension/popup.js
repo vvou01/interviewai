@@ -66,18 +66,29 @@
   // ─── Auth Token Verification ─────────────────────────────────────────────
   async function verifyToken(token) {
     try {
-      const response = await fetch(`${CONFIG.BASE_URL}/api/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "X-App-ID": CONFIG.APP_ID,
-        },
-        signal: AbortSignal.timeout(CONFIG.API_TIMEOUT_MS),
-      });
+      const response = await fetch(
+        `${CONFIG.BASE_URL}/api/entities/Users?limit=1`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "X-App-ID": CONFIG.APP_ID,
+          },
+          signal: AbortSignal.timeout(CONFIG.API_TIMEOUT_MS),
+        }
+      );
 
       if (!response.ok) return null;
 
       const data = await response.json();
-      return data;
+
+      // Extract user info from response if available
+      const user = data?.results?.[0] || data?.[0] || {};
+
+      return {
+        email: user.email || "Connected",
+        plan: user.plan || "free",
+        full_name: user.full_name || "User",
+      };
     } catch (e) {
       console.warn("[InterviewAI] Token verification failed:", e.message);
       return null;
