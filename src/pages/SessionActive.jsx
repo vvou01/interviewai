@@ -19,9 +19,12 @@ export default function SessionActive({ user }) {
   const [elapsed, setElapsed] = useState(0);
 
   const { data: session } = useQuery({
-    queryKey: ["session", sessionId],
-    queryFn: async () => { const s = await base44.entities.InterviewSessions.filter({ id: sessionId }); return s[0]; },
-    enabled: !!sessionId,
+    queryKey: ["session", sessionId, user?.id],
+    queryFn: async () => {
+      const s = await base44.entities.InterviewSessions.filter({ id: sessionId, created_by: user?.id });
+      return s[0];
+    },
+    enabled: !!sessionId && !!user?.id,
   });
 
   const { data: entries = [] } = useQuery({
@@ -55,7 +58,10 @@ export default function SessionActive({ user }) {
   };
 
   const handleEnd = async () => {
-    await base44.entities.InterviewSessions.update(sessionId, { status: "completed", ended_at: new Date().toISOString() });
+    const response = await base44.functions.invoke("endSession", { session_id: sessionId });
+    if (response?.error || response?.data?.error) {
+      return;
+    }
     navigate(createPageUrl(`SessionReport?id=${sessionId}`));
   };
 
