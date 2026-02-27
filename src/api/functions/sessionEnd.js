@@ -3,14 +3,20 @@
  *
  * Called by the Chrome extension (or web app) when the interview ends.
  * Marks the session completed, increments the user's monthly counter,
- * and kicks off async debrief generation via InvokeLLM.
+ * and fires generateDebrief without awaiting — the response is returned
+ * immediately while the debrief continues in the background.
+ *
+ * The frontend polls GET /sessions/{id}/report until status is "ready".
+ *
+ * Environment variables required:
+ *   ANTHROPIC_API_KEY – used transitively by generateDebrief
  *
  * Request
  *   Authorization: Bearer <user_api_token>
  *   Path param:    id  (session id)
  *
- * Response 200  (returns immediately — debrief generated async)
- *   { success: true, report_id: string | null }
+ * Response 200  (returned before debrief generation finishes)
+ *   { success: true }
  *
  * Errors
  *   401 – missing / invalid token
@@ -18,8 +24,10 @@
  *   404 – session not found
  */
 
+import { generateDebrief } from "./generateDebrief.js";
+
 export default async function sessionEnd({ req, context }) {
-  const { entities, integrations } = context;
+  const { entities } = context;
 
   // ── 1. Authenticate ──────────────────────────────────────────────────────────
   const token = (req.headers.authorization || "").replace("Bearer ", "").trim();
@@ -41,20 +49,21 @@ export default async function sessionEnd({ req, context }) {
   }
 
   // ── 3. Mark session completed ────────────────────────────────────────────────
-  const now = new Date().toISOString();
   await entities.InterviewSessions.update(sessionId, {
     status: "completed",
-    ended_at: now,
+    ended_at: new Date().toISOString(),
   });
 
   // ── 4. Increment monthly usage counter ───────────────────────────────────────
-  const currentUsed = user.interviews_used_this_month || 0;
   await entities.Users.update(user.id, {
-    interviews_used_this_month: currentUsed + 1,
+    interviews_used_this_month: (user.interviews_used_this_month || 0) + 1,
   });
 
-  // ── 5. Fetch all transcript entries and CV for debrief ───────────────────────
-  const entries = await entities.TranscriptEntries.filter({ session_id: sessionId }, "created_date");
+  // ── 5. Build transcript and fetch CV — needed by generateDebrief ─────────────
+  const entries = await entities.TranscriptEntries.filter(
+    { session_id: sessionId },
+    "created_date"
+  );
   const transcript = entries
     .map((e) => `${e.speaker === "interviewer" ? "Interviewer" : "Candidate"}: ${e.text}`)
     .join("\n");
@@ -65,56 +74,14 @@ export default async function sessionEnd({ req, context }) {
     cvText = cvProfiles[0]?.cv_text || "";
   }
 
-  // ── 6. Generate debrief report asynchronously ────────────────────────────────
-  // We return 200 immediately and let the LLM call finish in the background.
-  // The frontend polls GET /sessions/{id}/report until status is "ready".
-  let reportId = null;
-  try {
-    const prompt = `You are an expert interview coach. Analyze this complete interview and return ONLY valid JSON.
+  // ── 6. Fire debrief generation WITHOUT awaiting ──────────────────────────────
+  // This intentionally does not use await. The HTTP response is returned
+  // immediately; generateDebrief runs in the background and writes the
+  // DebriefReport record when complete. The frontend polls /report to detect it.
+  generateDebrief({ session, transcript, cvText, entities }).catch((err) => {
+    console.error(`[sessionEnd] generateDebrief fire-and-forget error session=${sessionId}:`, err.message);
+  });
 
-Candidate CV:
-${cvText}
-
-Role: ${session.job_title} at ${session.company_name}
-Interview type: ${session.interview_type}
-
-Full transcript:
-${transcript}
-
-Return this exact JSON structure:
-{
-  "overall_score": 7,
-  "summary": "2-3 sentence executive summary of performance",
-  "strongest_moments": ["moment 1", "moment 2", "moment 3"],
-  "missed_opportunities": ["opportunity 1", "opportunity 2"],
-  "questions_analysis": [
-    {
-      "question": "What the interviewer asked",
-      "answer_quality": "strong|adequate|weak",
-      "notes": "specific coaching note on this answer"
-    }
-  ],
-  "action_items": ["action 1", "action 2", "action 3"],
-  "follow_up_email_draft": "Full thank-you email draft addressed to the interviewer"
-}`;
-
-    const llmResponse = await integrations.InvokeLLM({ prompt, response_json_schema: true });
-    const reportData = typeof llmResponse === "string" ? JSON.parse(llmResponse) : llmResponse;
-
-    const report = await entities.DebriefReports.create({
-      session_id: sessionId,
-      ...reportData,
-    });
-    reportId = report.id;
-
-    // Update session with overall score
-    await entities.InterviewSessions.update(sessionId, {
-      overall_score: reportData.overall_score,
-    });
-  } catch (err) {
-    console.error("[sessionEnd] Debrief generation error:", err.message);
-    // Non-fatal — report will be generated on retry if needed
-  }
-
-  return { status: 200, body: { success: true, report_id: reportId } };
+  // ── 7. Return immediately ────────────────────────────────────────────────────
+  return { status: 200, body: { success: true } };
 }
