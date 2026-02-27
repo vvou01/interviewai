@@ -45,7 +45,7 @@ export default function SessionActive({ user }) {
   // Load session once
   useEffect(() => {
     if (!sessionId || !user?.email) return;
-    base44.entities.InterviewSessions.filter({ id: sessionId, created_by: user.email })
+    base44.entities.InterviewSessions.filter({ id: sessionId })
       .then((res) => {
         if (!res || res.length === 0) { setNotFound(true); return; }
         setSession(res[0]);
@@ -67,7 +67,7 @@ export default function SessionActive({ user }) {
   const pollTranscript = useCallback(async () => {
     if (!isVisible || sessionRef.current?.status !== "active") return;
     const data = await base44.entities.TranscriptEntries.filter(
-      { session_id: sessionId, created_by: user?.email },
+      { session_id: sessionId },
       "timestamp_seconds"
     );
     setEntries(data);
@@ -76,7 +76,7 @@ export default function SessionActive({ user }) {
   const pollCoaching = useCallback(async () => {
     if (!isVisible || sessionRef.current?.status !== "active") return;
     const data = await base44.entities.AISuggestions.filter(
-      { session_id: sessionId, created_by: user?.email },
+      { session_id: sessionId },
       "-created_date",
       1
     );
@@ -85,7 +85,7 @@ export default function SessionActive({ user }) {
 
   const pollSession = useCallback(async () => {
     if (!isVisible || !user?.email) return;
-    const res = await base44.entities.InterviewSessions.filter({ id: sessionId, created_by: user.email });
+    const res = await base44.entities.InterviewSessions.filter({ id: sessionId });
     if (res && res.length > 0) {
       setSession(res[0]);
       sessionRef.current = res[0];
