@@ -46,7 +46,7 @@ export default function ReportHeader({ session, report, typeLabel }) {
           )}
           <p className="text-xs text-slate-400 uppercase tracking-wide mt-2 font-medium">Overall Performance</p>
           {report.summary && (
-            <p className="text-sm text-slate-600 mt-1 line-clamp-2 leading-relaxed">{report.summary}</p>
+            <p className="text-sm text-slate-600 mt-1 line-clamp-1 leading-relaxed">{report.summary}</p>
           )}
         </div>
       </div>

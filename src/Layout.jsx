@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { createPageUrl } from "@/utils";
 import Sidebar from "./components/layout/Sidebar";
 import MobileNav from "./components/layout/MobileNav";
 
 const publicPages = ["Landing"];
-const focusPages = ["SessionActive"];
+const focusPages = ["SessionActive", "Onboarding"];
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
@@ -16,15 +17,29 @@ export default function Layout({ children, currentPageName }) {
         setLoading(false);
         return;
       }
+
       const isAuth = await base44.auth.isAuthenticated();
       if (!isAuth) {
         base44.auth.redirectToLogin(window.location.href);
         return;
       }
+
       const me = await base44.auth.me();
+
+      if (!me?.onboarding_completed && currentPageName !== "Onboarding") {
+        window.location.href = createPageUrl("Onboarding");
+        return;
+      }
+
+      if (me?.onboarding_completed && currentPageName === "Onboarding") {
+        window.location.href = createPageUrl("Dashboard");
+        return;
+      }
+
       setUser(me);
       setLoading(false);
     };
+
     loadUser();
   }, [currentPageName]);
 

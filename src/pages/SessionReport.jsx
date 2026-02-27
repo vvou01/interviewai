@@ -28,26 +28,25 @@ export default function SessionReport({ user }) {
   const [retryKey, setRetryKey] = useState(0);
 
   // Security: fetch only sessions owned by this user
-  const { data: session, isLoading: sessionLoading } = useQuery({
-    queryKey: ["session", sessionId, user?.email],
+  const { data: session, isLoading: sessionLoading, isFetched: sessionFetched } = useQuery({
+    queryKey: ["session", sessionId, user?.id],
     queryFn: async () => {
       const results = await base44.entities.InterviewSessions.filter({
         id: sessionId,
-        created_by: user?.email,
+        created_by: user?.id,
       });
       return results[0] || null;
     },
-    enabled: !!sessionId && !!user?.email,
+    enabled: !!sessionId && !!user?.id,
   });
 
   const {
     data: reports = [],
-    isLoading: reportLoading,
     isError,
   } = useQuery({
     queryKey: ["report", sessionId, retryKey],
     queryFn: () => base44.entities.DebriefReports.filter({ session_id: sessionId }),
-    enabled: !!sessionId && session !== null,
+    enabled: !!sessionId && sessionFetched && !!session,
     refetchInterval: (query) => {
       const hasData = query.state.data && query.state.data.length > 0;
       return hasData ? false : 5000;
@@ -60,7 +59,6 @@ export default function SessionReport({ user }) {
   }, []);
 
   const report = reports[0];
-  const isLoading = sessionLoading || (reportLoading && !report);
 
   const handleExport = async () => {
     const { jsPDF } = await import("jspdf");
@@ -100,6 +98,16 @@ export default function SessionReport({ user }) {
       addLine("Action Items", 14, true);
       report.action_items.forEach(item => addLine(`• ${item}`));
       y += 4;
+    }
+
+    if (report.questions_analysis?.length) {
+      addLine("Question by Question", 14, true);
+      report.questions_analysis.forEach((qa, index) => {
+        addLine(`${index + 1}. ${qa.question || "Question"}`);
+        addLine(`Answer Quality: ${qa.answer_quality || "Adequate"}`);
+        if (qa.notes) addLine(`Notes: ${qa.notes}`);
+        y += 2;
+      });
     }
 
     if (report.follow_up_email_draft) {

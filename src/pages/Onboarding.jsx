@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -7,148 +7,265 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Zap, ArrowRight, ArrowLeft, FileText, Puzzle, Key, Copy, Check, Rocket, RefreshCw } from "lucide-react";
+import { ArrowRight, ArrowLeft, Copy, CheckCheck, Puzzle } from "lucide-react";
 
-const onboardSteps = [
-  { icon: Zap, title: "Welcome" },
-  { icon: FileText, title: "CV Profile" },
-  { icon: Puzzle, title: "Extension" },
-  { icon: Key, title: "Connect" },
-  { icon: Rocket, title: "Ready" },
-];
+const steps = ["Welcome", "Create CV", "Install Extension", "Connect Extension", "Ready"];
 
 export default function Onboarding({ user }) {
-  const [step, setStep] = useState(0);
-  const [cvForm, setCvForm] = useState({ name: "", cv_text: "" });
-  const [token, setToken] = useState(user?.api_token || "");
-  const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
+  const firstName = useMemo(() => {
+    const fullName = user?.full_name || user?.name || "there";
+    return fullName.split(" ")[0];
+  }, [user]);
 
-  const createCVMut = useMutation({
-    mutationFn: (data) => base44.entities.CVProfiles.create({ ...data, is_default: true }),
-    onSuccess: () => setStep(2),
+  const [step, setStep] = useState(1);
+  const [cvForm, setCvForm] = useState({ name: "My CV", cv_text: "" });
+  const [cvError, setCvError] = useState("");
+  const [cvSkipped, setCvSkipped] = useState(false);
+  const [createdCVName, setCreatedCVName] = useState("");
+
+  const [extensionInstalled, setExtensionInstalled] = useState(false);
+  const [extensionConnected, setExtensionConnected] = useState(false);
+
+  const [token] = useState(user?.api_token || "");
+  const [copied, setCopied] = useState(false);
+
+  const saveCVMutation = useMutation({
+    mutationFn: async () => {
+      const textLength = cvForm.cv_text.trim().length;
+      if (textLength < 200) {
+        throw new Error("CV text must be at least 200 characters.");
+      }
+      if (!cvForm.name.trim()) {
+        throw new Error("Profile name is required.");
+      }
+
+      return base44.entities.CVProfiles.create({
+        name: cvForm.name.trim(),
+        cv_text: cvForm.cv_text,
+        is_default: true,
+        created_by: user?.id,
+      });
+    },
+    onSuccess: () => {
+      setCvSkipped(false);
+      setCreatedCVName(cvForm.name.trim());
+      setCvError("");
+      setStep(3);
+    },
+    onError: (error) => {
+      setCvError(error?.message || "Failed to save CV profile.");
+    },
   });
 
-  const generateToken = async () => {
-    const newToken = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
-    await base44.auth.updateMe({ api_token: newToken });
-    setToken(newToken);
+  const completeOnboarding = async (targetPage) => {
+    await base44.auth.updateMe({
+      onboarding_completed: true,
+      onboarding_completed_at: new Date().toISOString(),
+    });
+    navigate(createPageUrl(targetPage));
   };
 
-  const copyToken = () => { navigator.clipboard.writeText(token); setCopied(true); setTimeout(() => setCopied(false), 2000); };
-  const finishOnboarding = async () => { await base44.auth.updateMe({ onboarding_completed: true }); navigate(createPageUrl("Dashboard")); };
+  const handleCopy = async () => {
+    if (!token) return;
+    await navigator.clipboard.writeText(token);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
-        {/* Progress */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {onboardSteps.map((_, i) => (
-            <div key={i} className={`h-1.5 rounded-full transition-all ${i <= step ? "w-8 bg-violet-500" : "w-1.5 bg-slate-200"}`} />
-          ))}
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+      <div className="max-w-3xl mx-auto">
+        <div className="mb-6">
+          <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-violet-600 transition-all duration-300"
+              style={{ width: `${(step / steps.length) * 100}%` }}
+            />
+          </div>
+          <div className="mt-3 text-sm text-slate-600 font-medium">Step {step} of 5 — {steps[step - 1]}</div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
-          {/* Step 0 */}
-          {step === 0 && (
-            <div className="text-center space-y-6">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mx-auto">
-                <Zap className="w-8 h-8 text-white" />
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
+          {step === 1 && (
+            <div className="space-y-6 text-center">
+              <h1 className="text-3xl font-bold text-slate-900">Welcome to InterviewAI, {firstName}! 👋</h1>
+              <p className="text-slate-600">Your AI co-pilot for job interviews</p>
+
+              <div className="grid gap-3 text-left max-w-xl mx-auto">
+                <div className="rounded-xl bg-slate-50 p-4">🎤 Listens to both sides of your interview</div>
+                <div className="rounded-xl bg-slate-50 p-4">💡 Suggests answers in real-time, only you see them</div>
+                <div className="rounded-xl bg-slate-50 p-4">📋 Generates a full debrief after every session</div>
               </div>
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900">Welcome to InterviewAI</h2>
-                <p className="text-slate-500 mt-2 leading-relaxed">Your AI co-pilot for job interviews. Get real-time coaching, answer frameworks, and post-interview reports.</p>
-              </div>
-              <div className="space-y-3 text-left">
-                {["Upload your CV for personalized coaching", "AI listens to your interview in real-time", "Get a full debrief report after every session"].map((t, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm text-slate-700">
-                    <div className="w-6 h-6 rounded-lg bg-violet-100 flex items-center justify-center text-xs font-bold text-violet-700">{i + 1}</div>
-                    {t}
-                  </div>
-                ))}
-              </div>
-              <Button onClick={() => setStep(1)} className="w-full bg-gradient-to-r from-violet-600 to-purple-600">Let's Get Started <ArrowRight className="w-4 h-4 ml-2" /></Button>
+
+              <p className="text-sm text-slate-500">Setup takes about 2 minutes</p>
+              <Button onClick={() => setStep(2)} className="w-full md:w-auto">Let&apos;s Get Started <ArrowRight className="w-4 h-4 ml-2" /></Button>
             </div>
           )}
 
-          {/* Step 1 */}
-          {step === 1 && (
+          {step === 2 && (
             <div className="space-y-5">
-              <div className="text-center">
-                <h2 className="text-xl font-bold text-slate-900">Create Your CV Profile</h2>
-                <p className="text-sm text-slate-500 mt-1">This helps the AI personalize coaching to your experience</p>
-              </div>
               <div>
-                <Label className="text-slate-600 text-sm">Profile Name</Label>
-                <Input value={cvForm.name} onChange={(e) => setCvForm({ ...cvForm, name: e.target.value })} placeholder="e.g., My Main CV" className="mt-1.5" />
+                <h2 className="text-2xl font-bold text-slate-900">First, let&apos;s set up your CV</h2>
+                <p className="text-slate-600 mt-1">We use this to give you personalised coaching based on your actual experience</p>
               </div>
+
               <div>
-                <Label className="text-slate-600 text-sm">CV Text</Label>
-                <Textarea value={cvForm.cv_text} onChange={(e) => setCvForm({ ...cvForm, cv_text: e.target.value })} placeholder="Paste your full CV/resume text here..." className="mt-1.5 min-h-[160px]" />
+                <Label>Profile name</Label>
+                <Input
+                  value={cvForm.name}
+                  onChange={(e) => setCvForm((prev) => ({ ...prev, name: e.target.value }))}
+                  className="mt-1"
+                />
               </div>
-              <div className="flex gap-3">
-                <Button variant="ghost" onClick={() => setStep(0)} className="text-slate-500"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
-                <Button onClick={() => createCVMut.mutate(cvForm)} disabled={!cvForm.name || !cvForm.cv_text || createCVMut.isPending} className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600">
+
+              <div>
+                <Label>CV text</Label>
+                <Textarea
+                  rows={15}
+                  value={cvForm.cv_text}
+                  onChange={(e) => {
+                    setCvError("");
+                    setCvForm((prev) => ({ ...prev, cv_text: e.target.value }));
+                  }}
+                  placeholder="Paste your full CV or resume here. The more detail, the better your coaching will be..."
+                  className="mt-1"
+                />
+                <div className="text-xs text-slate-500 mt-1">{cvForm.cv_text.length} characters</div>
+                {cvError && <div className="text-sm text-red-600 mt-2">{cvError}</div>}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button variant="outline" onClick={() => setStep(1)}><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
+                <Button onClick={() => saveCVMutation.mutate()} disabled={saveCVMutation.isPending} className="sm:ml-auto">
                   Save & Continue <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
-              <button onClick={() => setStep(2)} className="text-xs text-slate-400 hover:text-slate-600 w-full text-center">Skip for now</button>
+              <button
+                onClick={() => {
+                  setCvSkipped(true);
+                  setCreatedCVName("");
+                  setCvError("");
+                  setStep(3);
+                }}
+                className="text-sm text-slate-500 hover:text-slate-700"
+              >
+                Skip for now
+              </button>
             </div>
           )}
 
-          {/* Step 2 */}
-          {step === 2 && (
-            <div className="space-y-6 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-purple-100 flex items-center justify-center mx-auto"><Puzzle className="w-7 h-7 text-purple-600" /></div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">Install Chrome Extension</h2>
-                <p className="text-sm text-slate-500 mt-2">The extension captures audio from your video call and displays the coaching overlay.</p>
-              </div>
-              <Button variant="outline" className="w-full" onClick={() => window.open("https://chrome.google.com/webstore", "_blank")}>
-                <Puzzle className="w-4 h-4 mr-2" /> Install Extension (Chrome Web Store)
-              </Button>
-              <div className="flex gap-3">
-                <Button variant="ghost" onClick={() => setStep(1)} className="text-slate-500"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
-                <Button onClick={() => { if (!token) generateToken(); setStep(3); }} className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600">Continue <ArrowRight className="w-4 h-4 ml-2" /></Button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3 */}
           {step === 3 && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h2 className="text-xl font-bold text-slate-900">Connect Extension</h2>
-                <p className="text-sm text-slate-500 mt-1">Copy your API token and paste it in the extension</p>
+            <div className="space-y-5">
+              <h2 className="text-2xl font-bold text-slate-900">Install the Chrome Extension</h2>
+              <p className="text-slate-600">The extension listens to your interview and shows coaching on your screen</p>
+
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-slate-500">
+                <Puzzle className="w-8 h-8 mx-auto mb-2" /> Browser overlay preview placeholder
               </div>
-              {token ? (
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-violet-700 font-mono truncate">{token}</code>
-                  <Button variant="ghost" size="icon" onClick={copyToken} className="text-slate-500 flex-shrink-0">
-                    {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </div>
-              ) : (
-                <Button onClick={generateToken} variant="outline" className="w-full"><RefreshCw className="w-4 h-4 mr-2" /> Generate API Token</Button>
-              )}
-              <div className="flex gap-3">
-                <Button variant="ghost" onClick={() => setStep(2)} className="text-slate-500"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
-                <Button onClick={() => setStep(4)} className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600">Continue <ArrowRight className="w-4 h-4 ml-2" /></Button>
+
+              <ol className="list-decimal pl-5 text-slate-700 space-y-2">
+                <li>Click the button below to open the Chrome Web Store</li>
+                <li>Click &quot;Add to Chrome&quot;</li>
+                <li>Pin the extension to your toolbar (click the puzzle piece icon)</li>
+              </ol>
+
+              <Button variant="outline" asChild>
+                <a href="#">Open Chrome Web Store</a>
+              </Button>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button variant="outline" onClick={() => setStep(2)}><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
+                <Button
+                  onClick={() => {
+                    setExtensionInstalled(true);
+                    setStep(4);
+                  }}
+                >
+                  I&apos;ve installed it ✓
+                </Button>
               </div>
+              <button
+                onClick={() => {
+                  setExtensionInstalled(false);
+                  setStep(4);
+                }}
+                className="text-sm text-slate-500 hover:text-slate-700"
+              >
+                Skip — I&apos;ll install later
+              </button>
             </div>
           )}
 
-          {/* Step 4 */}
           {step === 4 && (
-            <div className="text-center space-y-6">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center mx-auto">
-                <Rocket className="w-8 h-8 text-emerald-600" />
+            <div className="space-y-5">
+              <h2 className="text-2xl font-bold text-slate-900">Connect the extension to your account</h2>
+              <p className="text-slate-600">Copy your token and paste it into the extension popup</p>
+
+              <ol className="list-decimal pl-5 text-slate-700 space-y-2">
+                <li>Click the InterviewAI icon in your Chrome toolbar</li>
+                <li>Click &quot;Connect Account&quot;</li>
+                <li>Paste your token below into the popup</li>
+              </ol>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 flex items-center gap-3">
+                <code className="flex-1 font-mono text-sm md:text-base text-slate-800 break-all">{token || "No API token found"}</code>
+                <Button variant="outline" onClick={handleCopy} disabled={!token}>
+                  {copied ? "Copied!" : (<><Copy className="w-4 h-4 mr-1" /> Copy</>)}
+                </Button>
+              </div>
+
+              <p className="text-sm text-slate-500">Can&apos;t find the extension icon? Click the puzzle piece 🧩 in Chrome toolbar</p>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button variant="outline" onClick={() => setStep(3)}><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
+                <Button
+                  onClick={() => {
+                    setExtensionConnected(true);
+                    setStep(5);
+                  }}
+                >
+                  I&apos;ve connected it ✓
+                </Button>
+              </div>
+
+              <button
+                onClick={() => {
+                  setExtensionConnected(false);
+                  setStep(5);
+                }}
+                className="text-sm text-slate-500 hover:text-slate-700"
+              >
+                Skip — I&apos;ll connect later
+              </button>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div className="space-y-6 text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center animate-bounce">
+                <CheckCheck className="w-9 h-9 text-emerald-600" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">You're All Set!</h2>
-                <p className="text-slate-500 mt-2">Create your first interview session and ace that interview.</p>
+                <h2 className="text-3xl font-bold text-slate-900">You&apos;re all set! 🎉</h2>
+                <p className="text-slate-600 mt-2">InterviewAI is ready to coach you</p>
               </div>
-              <Button onClick={finishOnboarding} className="w-full bg-gradient-to-r from-violet-600 to-purple-600">Go to Dashboard <ArrowRight className="w-4 h-4 ml-2" /></Button>
+
+              <div className="text-left rounded-xl border border-slate-200 p-4 space-y-3">
+                <div className="flex items-center justify-between"><span>CV Profile</span><span className="font-medium">{cvSkipped ? "Not set up yet" : `${createdCVName || "My CV"} ✓`}</span></div>
+                <div className="flex items-center justify-between"><span>Extension</span><span className="font-medium">{extensionInstalled ? "Installed ✓" : "Install later"}</span></div>
+                <div className="flex items-center justify-between"><span>Connected</span><span className="font-medium">{extensionConnected ? "Connected ✓" : "Connect later"}</span></div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <Button onClick={() => completeOnboarding("NewSession")} className="w-full">
+                  Create My First Interview <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+                <button onClick={() => completeOnboarding("Dashboard")} className="text-sm text-slate-500 hover:text-slate-700">
+                  Go to Dashboard
+                </button>
+                <Button variant="outline" onClick={() => setStep(4)}><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
+              </div>
             </div>
           )}
         </div>
