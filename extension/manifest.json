@@ -1,1 +1,69 @@
+{
+  "manifest_version": 3,
+  "name": "InterviewAI Co-pilot",
+  "version": "1.0.0",
+  "description": "Real-time AI coaching during your job interviews. Only you can see it.",
 
+  "permissions": [
+    "tabCapture",
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "alarms"
+  ],
+
+  "host_permissions": [
+    "https://meet.google.com/*",
+    "https://teams.microsoft.com/*",
+    "https://zoom.us/*",
+    "https://app.zoom.us/*",
+    "https://interviewcoach.base44.app/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "InterviewAI Co-pilot"
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*",
+        "https://teams.microsoft.com/*",
+        "https://zoom.us/*",
+        "https://app.zoom.us/*"
+      ],
+      "js": ["config.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["styles/overlay.css", "icons/*"],
+      "matches": [
+        "https://meet.google.com/*",
+        "https://teams.microsoft.com/*",
+        "https://zoom.us/*",
+        "https://app.zoom.us/*"
+      ]
+    }
+  ]
+}

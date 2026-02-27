@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>InterviewAI</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        width: 300px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 13px;
+        color: #111827;
+        background: #fff;
+      }
+
+      /* Header */
+      .header {
+        background: #111827;
+        color: white;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .header-brand {
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 0.02em;
+      }
+
+      .header-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: #9ca3af;
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #6b7280;
+      }
+
+      .status-dot.live {
+        background: #22c55e;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      /* Body */
+      .body {
+        padding: 16px;
+      }
+
+      /* Not connected state */
+      #not-connected {
+        text-align: center;
+        padding: 8px 0;
+      }
+
+      .connect-title {
+        font-weight: 700;
+        font-size: 15px;
+        margin-bottom: 6px;
+      }
+
+      .connect-sub {
+        color: #6b7280;
+        font-size: 12px;
+        margin-bottom: 16px;
+        line-height: 1.5;
+      }
+
+      .btn-primary {
+        width: 100%;
+        background: #111827;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      .btn-primary:hover {
+        background: #374151;
+      }
+
+      .btn-primary:disabled {
+        background: #d1d5db;
+        cursor: not-allowed;
+      }
+
+      .btn-secondary {
+        width: 100%;
+        background: white;
+        color: #374151;
+        border: 1px solid #e5e7eb;
+        padding: 9px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        margin-top: 8px;
+      }
+
+      .btn-secondary:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+      }
+
+      .btn-danger {
+        width: 100%;
+        background: white;
+        color: #ef4444;
+        border: 1px solid #fecaca;
+        padding: 9px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        margin-top: 8px;
+      }
+
+      .btn-danger:hover {
+        background: #fef2f2;
+      }
+
+      /* Token input */
+      .field {
+        margin-bottom: 12px;
+      }
+
+      .field label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 5px;
+      }
+
+      .field input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 7px;
+        font-size: 13px;
+        color: #111827;
+        outline: none;
+        transition: border-color 0.15s;
+        font-family: inherit;
+      }
+
+      .field input:focus {
+        border-color: #111827;
+      }
+
+      .field input.monospace {
+        font-family: "SF Mono", "Fira Code", monospace;
+        font-size: 11px;
+        color: #6b7280;
+      }
+
+      /* Connected state */
+      #connected {
+        display: none;
+      }
+
+      .user-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        background: #f9fafb;
+        border-radius: 8px;
+        margin-bottom: 14px;
+        border: 1px solid #f3f4f6;
+      }
+
+      .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #111827;
+        color: white;
+        font-size: 12px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .user-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .user-email {
+        font-size: 12px;
+        color: #374151;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .user-plan {
+        font-size: 10px;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      /* Session section */
+      .section-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #9ca3af;
+        margin-bottom: 8px;
+      }
+
+      /* Active session state */
+      .session-active-box {
+        background: #f0fdf4;
+        border: 1px solid #86efac;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 12px;
+      }
+
+      .session-active-title {
+        font-weight: 700;
+        font-size: 13px;
+        color: #15803d;
+        margin-bottom: 2px;
+      }
+
+      .session-active-sub {
+        font-size: 11px;
+        color: #16a34a;
+      }
+
+      /* Error */
+      .error-msg {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 7px;
+        padding: 8px 10px;
+        font-size: 12px;
+        color: #b91c1c;
+        margin-bottom: 10px;
+        display: none;
+      }
+
+      /* Divider */
+      .divider {
+        border: none;
+        border-top: 1px solid #f3f4f6;
+        margin: 12px 0;
+      }
+
+      /* Footer */
+      .footer {
+        padding: 8px 16px;
+        border-top: 1px solid #f3f4f6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .footer a {
+        font-size: 11px;
+        color: #9ca3af;
+        text-decoration: none;
+      }
+
+      .footer a:hover {
+        color: #374151;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-brand">⚡ InterviewAI</div>
+      <div class="header-status">
+        <div class="status-dot" id="header-dot"></div>
+        <span id="header-status-text">Inactive</span>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="body">
+      <!-- Error message -->
+      <div class="error-msg" id="error-msg"></div>
+
+      <!-- NOT CONNECTED STATE -->
+      <div id="not-connected">
+        <div class="connect-title">Connect your account</div>
+        <div class="connect-sub">
+          Paste your API token from InterviewAI Settings to get started.
+        </div>
+
+        <div class="field">
+          <label>API Token</label>
+          <input
+            type="password"
+            id="token-input"
+            class="monospace"
+            placeholder="Paste your token here..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <button class="btn-primary" id="connect-btn">Connect Account</button>
+
+        <div style="text-align:center;margin-top:10px">
+          <a href="https://interviewcoach.base44.app/Settings" target="_blank"
+            style="font-size:11px;color:#6b7280;text-decoration:none">
+            Get your token from Settings →
+          </a>
+        </div>
+      </div>
+
+      <!-- CONNECTED STATE -->
+      <div id="connected">
+        <!-- User info -->
+        <div class="user-row">
+          <div class="user-avatar" id="user-avatar">?</div>
+          <div class="user-info">
+            <div class="user-email" id="user-email">Loading...</div>
+            <div class="user-plan" id="user-plan">Free Plan</div>
+          </div>
+        </div>
+
+        <!-- Session ID input (when not active) -->
+        <div id="session-setup">
+          <div class="section-title">Start Session</div>
+          <div class="field">
+            <label>Session ID</label>
+            <input
+              type="text"
+              id="session-id-input"
+              class="monospace"
+              placeholder="Paste from web app..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+          <button class="btn-primary" id="start-btn" disabled>
+            Start Coaching Session
+          </button>
+          <div style="text-align:center;margin-top:8px">
+            <a href="https://interviewcoach.base44.app" target="_blank"
+              style="font-size:11px;color:#6b7280;text-decoration:none">
+              Open InterviewAI dashboard →
+            </a>
+          </div>
+        </div>
+
+        <!-- Active session (when running) -->
+        <div id="session-active" style="display:none">
+          <div class="session-active-box">
+            <div class="session-active-title">● Session Live</div>
+            <div class="session-active-sub" id="active-session-id">Session: ...</div>
+          </div>
+          <button class="btn-danger" id="stop-btn">Stop Session</button>
+        </div>
+
+        <hr class="divider" />
+
+        <button class="btn-secondary" id="logout-btn">Disconnect Account</button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <a href="https://interviewcoach.base44.app" target="_blank">Dashboard</a>
+      <a href="https://interviewcoach.base44.app/Settings" target="_blank">Settings</a>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

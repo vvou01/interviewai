@@ -1,0 +1,526 @@
+/* InterviewAI Overlay — Isolated Styles */
+/* All classes prefixed with iai- to avoid conflicts with host page */
+
+#interviewai-root {
+  all: initial;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #111827;
+  pointer-events: none;
+}
+
+#interviewai-root * {
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+/* ─── Main Panel ─────────────────────────────────────────────────── */
+.iai-panel {
+  width: 340px;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: all 0.2s ease;
+  cursor: move;
+  user-select: none;
+}
+
+.iai-panel.iai-collapsed {
+  width: 200px;
+}
+
+.iai-panel.iai-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(20px);
+}
+
+/* ─── Header ─────────────────────────────────────────────────────── */
+.iai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #111827;
+  color: white;
+  cursor: move;
+}
+
+.iai-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.iai-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6b7280;
+}
+
+.iai-status-dot.iai-active {
+  background: #22c55e;
+  animation: iai-pulse 1.5s ease-in-out infinite;
+}
+
+.iai-status-dot.iai-connecting {
+  background: #f59e0b;
+  animation: iai-pulse 0.8s ease-in-out infinite;
+}
+
+.iai-status-dot.iai-error {
+  background: #ef4444;
+}
+
+@keyframes iai-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+.iai-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.iai-btn-icon {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.iai-btn-icon:hover {
+  color: white;
+  background: rgba(255,255,255,0.15);
+}
+
+/* ─── Body ───────────────────────────────────────────────────────── */
+.iai-body {
+  padding: 12px;
+  max-height: 480px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #e5e7eb transparent;
+}
+
+.iai-body::-webkit-scrollbar {
+  width: 4px;
+}
+.iai-body::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 2px;
+}
+
+/* ─── States ─────────────────────────────────────────────────────── */
+.iai-waiting {
+  text-align: center;
+  padding: 16px 8px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.iai-waiting-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+  animation: iai-bob 2s ease-in-out infinite;
+}
+
+@keyframes iai-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.iai-listening {
+  padding: 8px 10px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  border-left: 3px solid #6b7280;
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  margin-bottom: 8px;
+  animation: iai-fade-in 0.2s ease;
+}
+
+/* ─── Alert Banner ───────────────────────────────────────────────── */
+.iai-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  animation: iai-slide-down 0.3s ease;
+}
+
+.iai-alert.iai-alert-amber {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.iai-alert.iai-alert-red {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+}
+
+.iai-alert.iai-alert-green {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #14532d;
+}
+
+/* ─── Suggestion Card ────────────────────────────────────────────── */
+.iai-suggestion {
+  animation: iai-slide-in 0.3s ease;
+}
+
+@keyframes iai-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes iai-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes iai-slide-down {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Badges ─────────────────────────────────────────────────────── */
+.iai-badges {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.iai-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.iai-badge-behavioral { background: #dbeafe; color: #1e40af; }
+.iai-badge-technical  { background: #ede9fe; color: #5b21b6; }
+.iai-badge-situational{ background: #ccfbf1; color: #0f766e; }
+.iai-badge-motivational{ background: #dcfce7; color: #15803d; }
+.iai-badge-curveball  { background: #fff7ed; color: #c2410c; }
+.iai-badge-framework  { background: #f3f4f6; color: #374151; }
+
+/* ─── Headline ───────────────────────────────────────────────────── */
+.iai-headline {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+/* ─── Structure ──────────────────────────────────────────────────── */
+.iai-structure {
+  margin-bottom: 10px;
+}
+
+.iai-structure-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+  margin-bottom: 6px;
+}
+
+.iai-structure-item {
+  display: flex;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 12px;
+}
+
+.iai-structure-item:last-child {
+  border-bottom: none;
+}
+
+.iai-structure-label {
+  font-weight: 600;
+  color: #374151;
+  min-width: 64px;
+  flex-shrink: 0;
+}
+
+.iai-structure-guidance {
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* ─── CV Hook ────────────────────────────────────────────────────── */
+.iai-cv-hook {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 7px;
+  padding: 7px 10px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.iai-cv-hook-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #92400e;
+  margin-bottom: 3px;
+}
+
+.iai-cv-hook-text {
+  color: #78350f;
+  line-height: 1.4;
+}
+
+/* ─── Keywords / Avoid ───────────────────────────────────────────── */
+.iai-chips-section {
+  margin-bottom: 8px;
+}
+
+.iai-chips-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+  margin-bottom: 5px;
+}
+
+.iai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.iai-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.iai-chip-green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.iai-chip-red {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* ─── Timing ─────────────────────────────────────────────────────── */
+.iai-timing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.iai-timing-green { background: #dcfce7; color: #15803d; }
+.iai-timing-amber { background: #fef9c3; color: #854d0e; }
+.iai-timing-red   { background: #fee2e2; color: #b91c1c; }
+
+/* ─── Follow-up Questions ────────────────────────────────────────── */
+.iai-followups {
+  margin-bottom: 8px;
+}
+
+.iai-followups-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+  margin-bottom: 5px;
+}
+
+.iai-followup-item {
+  font-size: 12px;
+  color: #4b5563;
+  font-style: italic;
+  padding: 3px 0;
+  padding-left: 12px;
+  position: relative;
+  line-height: 1.4;
+}
+
+.iai-followup-item::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: #9ca3af;
+}
+
+/* ─── Coaching Note ──────────────────────────────────────────────── */
+.iai-coaching-note {
+  background: #f9fafb;
+  border-radius: 7px;
+  padding: 7px 10px;
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.4;
+  border-top: 1px solid #f3f4f6;
+  margin-top: 4px;
+}
+
+.iai-coaching-note-label {
+  font-weight: 600;
+  color: #9ca3af;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: block;
+  margin-bottom: 3px;
+}
+
+/* ─── Upgrade Banner ─────────────────────────────────────────────── */
+.iai-upgrade {
+  text-align: center;
+  padding: 16px 12px;
+}
+
+.iai-upgrade-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.iai-upgrade-sub {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+
+.iai-upgrade-btn {
+  display: inline-block;
+  background: #111827;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border-radius: 7px;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s;
+}
+
+.iai-upgrade-btn:hover {
+  background: #374151;
+}
+
+/* ─── Salary Mode ────────────────────────────────────────────────── */
+.iai-salary-mode {
+  animation: iai-slide-in 0.3s ease;
+}
+
+.iai-salary-header {
+  background: #1e3a5f;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px 8px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.iai-salary-body {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 10px 12px;
+}
+
+.iai-salary-rule {
+  font-size: 12px;
+  color: #1e3a5f;
+  padding: 4px 0;
+  font-weight: 500;
+}
+
+.iai-salary-counter {
+  font-size: 12px;
+  font-style: italic;
+  color: #2563eb;
+  margin-top: 6px;
+  padding: 5px 8px;
+  background: white;
+  border-radius: 5px;
+  border: 1px solid #bfdbfe;
+}
+
+/* ─── Keyboard Shortcut Hint ─────────────────────────────────────── */
+.iai-shortcut-hint {
+  text-align: center;
+  padding: 4px;
+  font-size: 10px;
+  color: #d1d5db;
+  border-top: 1px solid #f3f4f6;
+}
+
+/* ─── Transcript Strip ───────────────────────────────────────────── */
+.iai-transcript-strip {
+  border-top: 1px solid #f3f4f6;
+  padding: 6px 12px;
+  max-height: 52px;
+  overflow: hidden;
+}
+
+.iai-transcript-line {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.iai-transcript-line.iai-interviewer {
+  color: #6b7280;
+}
+
+.iai-transcript-line.iai-candidate {
+  color: #3b82f6;
+}
