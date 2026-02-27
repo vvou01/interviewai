@@ -48,6 +48,10 @@ export default function Layout({ children, currentPageName }) {
     );
   }
 
+  if (fullscreenPages.includes(currentPageName)) {
+    return <>{React.cloneElement(children, { user })}</>;
+  }
+
   if (focusPages.includes(currentPageName)) {
     return (
       <div className="min-h-screen bg-slate-50 overflow-hidden">
