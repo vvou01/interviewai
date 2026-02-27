@@ -2,140 +2,179 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Plus, FileText, Star, Trash2, Pencil, X, Check } from "lucide-react";
-import UpgradeBanner from "@/components/shared/UpgradeBanner";
+import { Plus, FileText } from "lucide-react";
+import { format } from "date-fns";
+import CVProfileForm from "@/components/cvprofiles/CVProfileForm";
+import CVProfileCard from "@/components/cvprofiles/CVProfileCard";
+import DeleteConfirmDialog from "@/components/cvprofiles/DeleteConfirmDialog";
 
 const planLimits = { free: 1, pro: 3, pro_plus: Infinity };
 
+const tooltipMsg = {
+  free: "Upgrade to Pro for up to 3 profiles",
+  pro: "Upgrade to Pro+ for unlimited profiles",
+  pro_plus: null,
+};
+
 export default function CVProfiles({ user }) {
   const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: "", cv_text: "", is_default: false });
+  const [editing, setEditing] = useState(null); // profile object
+  const [deleteTarget, setDeleteTarget] = useState(null); // profile object
+  const [showTooltip, setShowTooltip] = useState(false);
   const qc = useQueryClient();
-
-  const { data: profiles = [], isLoading } = useQuery({
-    queryKey: ["cvProfiles"],
-    queryFn: () => base44.entities.CVProfiles.list("-created_date"),
-  });
 
   const plan = user?.plan || "free";
   const limit = planLimits[plan];
-  const canCreate = profiles.length < limit;
 
-  const createMut = useMutation({
-    mutationFn: (data) => base44.entities.CVProfiles.create(data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cvProfiles"] }); resetForm(); },
+  const { data: profiles = [], isLoading } = useQuery({
+    queryKey: ["cvProfiles"],
+    queryFn: () => base44.entities.CVProfiles.filter({ created_by: user?.email }, "-created_date"),
   });
-  const updateMut = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.CVProfiles.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cvProfiles"] }); resetForm(); },
+
+  const { data: activeSessions = [] } = useQuery({
+    queryKey: ["activeSessions"],
+    queryFn: () => base44.entities.InterviewSessions.filter({ status: "active" }),
   });
-  const deleteMut = useMutation({
-    mutationFn: (id) => base44.entities.CVProfiles.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["cvProfiles"] }),
-  });
-  const setDefaultMut = useMutation({
-    mutationFn: async (id) => {
-      for (const p of profiles) {
-        if (p.is_default) await base44.entities.CVProfiles.update(p.id, { is_default: false });
+
+  const canCreate = limit === Infinity || profiles.length < limit;
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cvProfiles"] });
+
+  const saveMut = useMutation({
+    mutationFn: async ({ id, data }) => {
+      // If set as default, clear others first
+      if (data.is_default) {
+        for (const p of profiles) {
+          if (p.is_default && p.id !== id) {
+            await base44.entities.CVProfiles.update(p.id, { is_default: false });
+          }
+        }
       }
-      await base44.entities.CVProfiles.update(id, { is_default: true });
+      if (id) {
+        return base44.entities.CVProfiles.update(id, data);
+      } else {
+        return base44.entities.CVProfiles.create(data);
+      }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["cvProfiles"] }),
+    onSuccess: () => { invalidate(); setShowForm(false); setEditing(null); },
   });
 
-  const resetForm = () => { setShowForm(false); setEditing(null); setForm({ name: "", cv_text: "", is_default: false }); };
-  const handleEdit = (profile) => { setEditing(profile.id); setForm({ name: profile.name, cv_text: profile.cv_text, is_default: profile.is_default }); setShowForm(true); };
-  const handleSubmit = () => { editing ? updateMut.mutate({ id: editing, data: form }) : createMut.mutate(form); };
+  const deleteMut = useMutation({
+    mutationFn: async (profile) => {
+      await base44.entities.CVProfiles.delete(profile.id);
+      // Auto-assign default if this was default and others exist
+      if (profile.is_default) {
+        const remaining = profiles.filter(p => p.id !== profile.id);
+        if (remaining.length > 0) {
+          // oldest = last in "-created_date" list, so last element
+          const oldest = [...remaining].sort((a, b) => new Date(a.created_date) - new Date(b.created_date))[0];
+          await base44.entities.CVProfiles.update(oldest.id, { is_default: true });
+        }
+      }
+    },
+    onSuccess: () => { invalidate(); setDeleteTarget(null); },
+  });
+
+  const handleAddClick = () => {
+    if (!canCreate) { setShowTooltip(true); setTimeout(() => setShowTooltip(false), 2500); return; }
+    setEditing(null);
+    setShowForm(true);
+  };
+
+  const handleEdit = (profile) => { setEditing(profile); setShowForm(true); };
+
+  const handleDeleteRequest = (profile) => setDeleteTarget(profile);
+
+  const getActiveSessionWarning = (profile) => {
+    return activeSessions.some(s => s.cv_profile_id === profile.id);
+  };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">CV Profiles</h1>
-          <p className="text-sm text-slate-500 mt-1">{profiles.length}{limit !== Infinity ? ` / ${limit}` : ""} profiles</p>
+          <p className="text-sm text-slate-500 mt-1">Manage the CVs you use for interview sessions</p>
         </div>
-        {canCreate && (
-          <Button onClick={() => { resetForm(); setShowForm(true); }} className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 shadow-sm">
-            <Plus className="w-4 h-4 mr-2" /> Add Profile
+        <div className="relative flex-shrink-0">
+          <Button
+            onClick={handleAddClick}
+            className={`${canCreate ? "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 shadow-sm" : "bg-slate-200 text-slate-400 cursor-not-allowed hover:bg-slate-200"}`}
+          >
+            <Plus className="w-4 h-4 mr-2" /> Add New Profile
           </Button>
-        )}
+          {showTooltip && (
+            <div className="absolute right-0 top-full mt-2 w-60 bg-slate-800 text-white text-xs rounded-xl px-3 py-2 z-10 shadow-lg">
+              {tooltipMsg[plan]}
+              <div className="absolute right-4 -top-1 w-2 h-2 bg-slate-800 rotate-45" />
+            </div>
+          )}
+        </div>
       </div>
 
-      {!canCreate && !showForm && (
-        <UpgradeBanner message={`You've reached the ${limit} CV profile limit. Upgrade to add more.`} />
-      )}
-
-      {showForm && (
-        <div className="glass-card p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-slate-800">{editing ? "Edit" : "New"} CV Profile</h3>
-            <button onClick={resetForm} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+      {/* Plan usage */}
+      {limit !== Infinity && (
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1">
+            {Array.from({ length: limit }).map((_, i) => (
+              <div key={i} className={`h-1.5 w-8 rounded-full ${i < profiles.length ? "bg-violet-500" : "bg-slate-200"}`} />
+            ))}
           </div>
-          <div>
-            <Label className="text-slate-600 text-sm">Profile Name</Label>
-            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g., Software Engineer CV" className="mt-1.5" />
-          </div>
-          <div>
-            <Label className="text-slate-600 text-sm">CV Text</Label>
-            <Textarea value={form.cv_text} onChange={(e) => setForm({ ...form, cv_text: e.target.value })} placeholder="Paste your full CV text here..." className="mt-1.5 min-h-[200px]" />
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" checked={form.is_default} onChange={(e) => setForm({ ...form, is_default: e.target.checked })} className="rounded" />
-            <label className="text-sm text-slate-600">Set as default profile</label>
-          </div>
-          <div className="flex gap-3">
-            <Button onClick={handleSubmit} disabled={!form.name || !form.cv_text} className="bg-gradient-to-r from-violet-600 to-purple-600">
-              <Check className="w-4 h-4 mr-2" /> {editing ? "Save Changes" : "Create Profile"}
-            </Button>
-            <Button variant="ghost" onClick={resetForm} className="text-slate-500">Cancel</Button>
-          </div>
+          <span className="text-xs text-slate-400">{profiles.length} / {limit} profiles</span>
         </div>
       )}
 
-      {isLoading ? (
-        <div className="text-center py-12 text-slate-400">Loading...</div>
-      ) : profiles.length === 0 && !showForm ? (
-        <div className="glass-card p-12 text-center">
-          <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500 mb-1">No CV profiles yet</p>
-          <p className="text-sm text-slate-400">Create your first profile to get started.</p>
+      {/* Empty state */}
+      {!isLoading && profiles.length === 0 && !showForm && (
+        <div className="glass-card p-16 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-8 h-8 text-slate-300" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-700 mb-1">No CV profiles yet</h3>
+          <p className="text-sm text-slate-400 mb-6">Add your first CV to get personalized coaching during interviews.</p>
+          <Button onClick={handleAddClick} className="bg-gradient-to-r from-violet-600 to-purple-600">
+            <Plus className="w-4 h-4 mr-2" /> Add Your First CV
+          </Button>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {profiles.map((p) => (
-            <div key={p.id} className="glass-card p-5 flex items-start gap-4 glass-card-hover group">
-              <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <FileText className="w-5 h-5 text-violet-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-medium text-slate-800">{p.name}</h3>
-                  {p.is_default && (
-                    <span className="px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-xs font-medium border border-violet-200">Default</span>
-                  )}
-                </div>
-                <p className="text-sm text-slate-400 mt-1 line-clamp-2">{p.cv_text}</p>
-              </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {!p.is_default && (
-                  <button onClick={() => setDefaultMut.mutate(p.id)} className="p-2 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-500" title="Set as default">
-                    <Star className="w-4 h-4" />
-                  </button>
-                )}
-                <button onClick={() => handleEdit(p)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700">
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button onClick={() => deleteMut.mutate(p.id)} className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+      )}
+
+      {/* Profile grid */}
+      {profiles.length > 0 && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {profiles.map(p => (
+            <CVProfileCard
+              key={p.id}
+              profile={p}
+              onEdit={handleEdit}
+              onDelete={handleDeleteRequest}
+            />
           ))}
         </div>
+      )}
+
+      {/* Loading */}
+      {isLoading && <div className="text-center py-12 text-slate-400 text-sm">Loading profiles...</div>}
+
+      {/* Form modal */}
+      {showForm && (
+        <CVProfileForm
+          profile={editing}
+          isSaving={saveMut.isPending}
+          onSave={(data) => saveMut.mutate({ id: editing?.id, data })}
+          onClose={() => { setShowForm(false); setEditing(null); }}
+        />
+      )}
+
+      {/* Delete dialog */}
+      {deleteTarget && (
+        <DeleteConfirmDialog
+          profile={deleteTarget}
+          hasActiveSession={getActiveSessionWarning(deleteTarget)}
+          isDeleting={deleteMut.isPending}
+          onConfirm={() => deleteMut.mutate(deleteTarget)}
+          onClose={() => setDeleteTarget(null)}
+        />
       )}
     </div>
   );
