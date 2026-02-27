@@ -29,11 +29,18 @@ export default function SessionActive({ user }) {
   const [elapsed, setElapsed] = useState(0);
   const [isEnding, setIsEnding] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isVisible, setIsVisible] = useState(document.visibilityState !== "hidden");
 
   const transcriptIntervalRef = useRef(null);
   const coachingIntervalRef = useRef(null);
   const timerIntervalRef = useRef(null);
   const sessionRef = useRef(null);
+
+  useEffect(() => {
+    const onVisibilityChange = () => setIsVisible(document.visibilityState !== "hidden");
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
 
   // Load session once
   useEffect(() => {
@@ -50,41 +57,44 @@ export default function SessionActive({ user }) {
   useEffect(() => {
     if (!session?.started_at || session.status !== "active") return;
     const start = new Date(session.started_at).getTime();
-    timerIntervalRef.current = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - start) / 1000));
-    }, 1000);
+    const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
+    tick();
+    timerIntervalRef.current = setInterval(tick, 1000);
     return () => clearInterval(timerIntervalRef.current);
   }, [session?.started_at, session?.status]);
 
-  // Polling
-  const isHidden = () => document.visibilityState === "hidden";
-
+  // Polling — respects visibilityState
   const pollTranscript = useCallback(async () => {
-    if (isHidden() || sessionRef.current?.status !== "active") return;
-    const data = await base44.entities.TranscriptEntries.filter({ session_id: sessionId }, "timestamp_seconds");
+    if (!isVisible || sessionRef.current?.status !== "active") return;
+    const data = await base44.entities.TranscriptEntries.filter(
+      { session_id: sessionId, created_by: user?.email },
+      "timestamp_seconds"
+    );
     setEntries(data);
-  }, [sessionId]);
+  }, [sessionId, user?.email, isVisible]);
 
   const pollCoaching = useCallback(async () => {
-    if (isHidden() || sessionRef.current?.status !== "active") return;
-    const data = await base44.entities.AISuggestions.filter({ session_id: sessionId }, "-created_date", 1);
+    if (!isVisible || sessionRef.current?.status !== "active") return;
+    const data = await base44.entities.AISuggestions.filter(
+      { session_id: sessionId, created_by: user?.email },
+      "-created_date",
+      1
+    );
     if (data && data.length > 0) setLatestSuggestion(data[0]);
-  }, [sessionId]);
+  }, [sessionId, user?.email, isVisible]);
 
-  // Also re-fetch session status periodically
   const pollSession = useCallback(async () => {
-    if (isHidden() || !user?.email) return;
+    if (!isVisible || !user?.email) return;
     const res = await base44.entities.InterviewSessions.filter({ id: sessionId, created_by: user.email });
     if (res && res.length > 0) {
       setSession(res[0]);
       sessionRef.current = res[0];
     }
-  }, [sessionId, user?.email]);
+  }, [sessionId, user?.email, isVisible]);
 
   useEffect(() => {
     if (!session || session.status !== "active") return;
 
-    // Initial load
     pollTranscript();
     pollCoaching();
 
@@ -97,9 +107,8 @@ export default function SessionActive({ user }) {
       clearInterval(coachingIntervalRef.current);
       clearInterval(sessionPollInterval);
     };
-  }, [session?.status]);
+  }, [session?.status, isVisible]);
 
-  // Clear all on completed
   useEffect(() => {
     if (session?.status === "completed") {
       clearInterval(transcriptIntervalRef.current);
@@ -110,8 +119,12 @@ export default function SessionActive({ user }) {
 
   const handleEnd = async () => {
     setIsEnding(true);
-    await base44.functions.invoke("endSession", { session_id: sessionId });
-    setTimeout(() => navigate(createPageUrl(`SessionReport?id=${sessionId}`)), 2000);
+    try {
+      await base44.functions.invoke("endSession", { session_id: sessionId });
+      setTimeout(() => navigate(createPageUrl(`SessionReport?id=${sessionId}`)), 2000);
+    } catch {
+      setIsEnding(false);
+    }
   };
 
   const handleCopy = (text) => {
@@ -121,6 +134,9 @@ export default function SessionActive({ user }) {
   };
 
   const isBlurred = (user?.plan || "free") === "free";
+  const isActive = session?.status === "active";
+  const isSetup = session?.status === "setup";
+  const isCompleted = session?.status === "completed";
 
   // ── Render states ──────────────────────────────────────────────
 
@@ -144,13 +160,18 @@ export default function SessionActive({ user }) {
     );
   }
 
-  // Shared top bar + panel layout
   return (
     <div className="fixed inset-0 flex flex-col bg-slate-50 z-40">
       {/* ── Top Bar ── */}
       <div className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 flex-shrink-0">
         {/* Left: job info */}
         <div className="flex items-center gap-2 min-w-0">
+          {isActive && (
+            <span className="relative flex h-2 w-2 flex-shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+            </span>
+          )}
           <span className="font-bold text-slate-900 truncate">{session.job_title}</span>
           <span className="text-slate-400 text-sm hidden sm:inline">at</span>
           <span className="font-bold text-slate-900 truncate hidden sm:inline">{session.company_name}</span>
@@ -158,12 +179,12 @@ export default function SessionActive({ user }) {
 
         {/* Center: timer */}
         <div className="font-mono text-xl font-bold text-slate-700 tabular-nums">
-          {session.status === "active" ? formatTime(elapsed) : "00:00"}
+          {isActive ? formatTime(elapsed) : "00:00"}
         </div>
 
         {/* Right: end button */}
         <div className="flex-shrink-0">
-          {session.status === "active" && (
+          {isActive && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400">
@@ -190,7 +211,7 @@ export default function SessionActive({ user }) {
               </AlertDialogContent>
             </AlertDialog>
           )}
-          {session.status === "completed" && (
+          {isCompleted && (
             <Link to={createPageUrl(`SessionReport?id=${sessionId}`)}>
               <Button size="sm" className="bg-gradient-to-r from-violet-600 to-purple-600">
                 View Report <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
@@ -201,10 +222,10 @@ export default function SessionActive({ user }) {
       </div>
 
       {/* ── Status banners ── */}
-      {session.status === "setup" && (
+      {isSetup && (
         <SetupBanner sessionId={sessionId} copied={copied} onCopy={handleCopy} />
       )}
-      {session.status === "completed" && (
+      {isCompleted && (
         <div className="bg-slate-800 text-white text-sm py-2 px-4 text-center flex-shrink-0">
           Session ended — <Link to={createPageUrl(`SessionReport?id=${sessionId}`)} className="underline font-medium">View your report →</Link>
         </div>
@@ -221,14 +242,8 @@ export default function SessionActive({ user }) {
         <div className="w-[60%] flex flex-col border-r border-slate-200 bg-white">
           <div className="px-4 py-3 border-b border-slate-100 flex-shrink-0 flex items-center gap-2">
             <h3 className="text-sm font-semibold text-slate-700">Live Transcript</h3>
-            {session.status === "active" && (
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-            )}
           </div>
-          <TranscriptPanel entries={entries} />
+          <TranscriptPanel entries={entries} isActive={isActive} />
         </div>
 
         {/* Right: Coaching 40% */}
