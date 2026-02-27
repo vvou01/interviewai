@@ -78,7 +78,6 @@ Respond with JSON exactly matching this schema:
     // Save suggestion
     const suggestion = await base44.entities.AISuggestions.create({
       session_id,
-      user_id: user.id,
       trigger_text: interviewer_text,
       latency_ms,
       ...coaching,

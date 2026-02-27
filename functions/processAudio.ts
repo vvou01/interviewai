@@ -60,7 +60,6 @@ Deno.serve(async (req) => {
         if (currentText.trim()) {
           entries.push({
             session_id,
-            user_id: user.id,
             speaker: currentSpeaker === 0 ? 'interviewer' : 'candidate',
             text: currentText.trim(),
             timestamp_seconds: Math.round(startTime),
@@ -77,7 +76,6 @@ Deno.serve(async (req) => {
     if (currentText.trim()) {
       entries.push({
         session_id,
-        user_id: user.id,
         speaker: currentSpeaker === 0 ? 'interviewer' : 'candidate',
         text: currentText.trim(),
         timestamp_seconds: Math.round(startTime),
