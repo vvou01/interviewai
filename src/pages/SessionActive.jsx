@@ -41,7 +41,7 @@ export default function SessionActive({ user }) {
 
   const { data: entries = [] } = useQuery({
     queryKey: ["transcript", sessionId, user?.id],
-    queryFn: () => base44.entities.TranscriptEntries.filter({ session_id: sessionId, created_by: user?.id }, "created_date"),
+    queryFn: () => base44.entities.TranscriptEntries.filter({ session_id: sessionId, user_id: user?.id }, "created_date"),
     enabled: !!sessionId && !!user?.id,
     refetchInterval: () => (isActive && isVisible ? 3000 : false),
     refetchOnWindowFocus: false,
@@ -49,7 +49,7 @@ export default function SessionActive({ user }) {
 
   const { data: suggestions = [] } = useQuery({
     queryKey: ["suggestions", sessionId, user?.id],
-    queryFn: () => base44.entities.AISuggestions.filter({ session_id: sessionId, created_by: user?.id }, "-created_date", 1),
+    queryFn: () => base44.entities.AISuggestions.filter({ session_id: sessionId, user_id: user?.id }, "-created_date", 1),
     enabled: !!sessionId && !!user?.id,
     refetchInterval: () => (isActive && isVisible ? 2000 : false),
     refetchOnWindowFocus: false,
