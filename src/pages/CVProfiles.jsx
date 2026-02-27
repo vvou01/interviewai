@@ -44,45 +44,50 @@ export default function CVProfiles({ user }) {
   const invalidate = () => qc.invalidateQueries({ queryKey: ["cvProfiles"] });
 
   const saveMut = useMutation({
-    mutationFn: async ({ id, data }) => {
-      // Always fetch fresh user to avoid stale closure / null-user issues
-      const freshUser = await base44.auth.me();
-      if (!freshUser?.id) throw new Error("Not authenticated");
-      const userId = freshUser.id;
-
-      console.log("[CVProfiles] Save called with:", {
-        name: data.name,
-        cvLength: data.cv_text?.length,
-        userId,
-        isDefault: data.is_default,
+    mutationFn: async (formData) => {
+      console.log("[CV] Step 1 - mutationFn entered, formData:", {
+        id: formData.id,
+        name: formData.name,
+        cvLength: formData.cv_text?.length,
+        isDefault: formData.is_default,
       });
 
-      // Limit check for new profiles using current cached count
-      if (!id && limit !== Infinity && profiles.length >= limit) {
-        throw new Error(tooltipMsg[plan] || "Profile limit reached");
-      }
+      const me = await base44.auth.me();
+      const userId = me?.id;
+      if (!userId) throw new Error("Not logged in");
+      console.log("[CV] Step 2 - got userId:", userId);
 
-      // If set as default, clear other defaults first (sequential awaits — no race condition)
-      if (data.is_default) {
-        const allProfiles = await base44.entities.CVProfiles.filter({ created_by: userId }, "-created_date");
-        for (const p of allProfiles) {
-          if (p.is_default && p.id !== id) {
-            await base44.entities.CVProfiles.update(p.id, { is_default: false });
-          }
-        }
-      }
-
-      if (id) {
-        return base44.entities.CVProfiles.update(id, data);
+      if (formData.id) {
+        console.log("[CV] Step 3 - about to UPDATE:", formData.id);
+        await base44.entities.CVProfiles.update(formData.id, {
+          name: formData.name,
+          cv_text: formData.cv_text,
+          is_default: formData.is_default ?? false,
+        });
+        console.log("[CV] Step 4 - UPDATE successful");
       } else {
-        return base44.entities.CVProfiles.create({ ...data, created_by: userId });
+        console.log("[CV] Step 3 - about to CREATE");
+        await base44.entities.CVProfiles.create({
+          name: formData.name,
+          cv_text: formData.cv_text,
+          is_default: formData.is_default ?? false,
+          created_by: userId,
+        });
+        console.log("[CV] Step 4 - CREATE successful");
       }
+
+      console.log("[CV] Step 5 - Save complete");
     },
-    onSuccess: () => { setActionError(""); invalidate(); setShowForm(false); setEditing(null); },
+    onSuccess: () => {
+      setActionError("");
+      qc.invalidateQueries({ queryKey: ["cvProfiles"] });
+      setShowForm(false);
+      setEditing(null);
+    },
     onError: (err) => {
-      console.error("[CVProfiles] Save FAILED:", err);
-      console.error("[CVProfiles] Error details:", JSON.stringify(err));
-      setActionError(err?.message || "Unable to save CV profile.");
+      console.error("[CV] Save FAILED:", err);
+      console.error("[CV] Error details:", JSON.stringify(err));
+      setActionError(err?.message || "Failed to save. Please try again.");
     },
   });
 
@@ -201,7 +206,7 @@ export default function CVProfiles({ user }) {
         <CVProfileForm
           profile={editing}
           isSaving={saveMut.isPending}
-          onSave={(data) => saveMut.mutate({ id: editing?.id, data })}
+          onSave={(data) => saveMut.mutate({ ...data, id: editing?.id })}
           onClose={() => { setShowForm(false); setEditing(null); }}
         />
       )}
