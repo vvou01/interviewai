@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
 
     if (!session_id) return Response.json({ error: 'session_id is required' }, { status: 400 });
 
-    const sessions = await base44.entities.InterviewSessions.filter({ id: session_id });
+    const sessions = await base44.entities.InterviewSessions.filter({ id: session_id, created_by: user.id });
     const session = sessions[0];
     if (!session) return Response.json({ error: 'Session not found' }, { status: 404 });
 
@@ -23,10 +23,6 @@ Deno.serve(async (req) => {
       status: 'active',
       started_at: new Date().toISOString(),
     });
-
-    // Increment interviews_used_this_month on user
-    const currentUsed = user.interviews_used_this_month || 0;
-    await base44.auth.updateMe({ interviews_used_this_month: currentUsed + 1 });
 
     return Response.json({ session: updated });
   } catch (error) {

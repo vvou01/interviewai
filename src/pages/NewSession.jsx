@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useMutation } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
-import { ArrowLeft, ArrowRight, Loader2, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StepSelectCV from "@/components/session/StepSelectCV";
 import StepJobDetails from "@/components/session/StepJobDetails";
@@ -45,17 +44,46 @@ export default function NewSession({ user }) {
   }, [isDirty]);
 
   const plan = user?.plan || "free";
-  const used = user?.interviews_used_this_month || 0;
-  const limit = planLimits[plan];
-  const atLimit = limit !== Infinity && used >= limit;
+
+  const {
+    data: usage,
+    isFetching: isCheckingLimit,
+    refetch: refetchUsage,
+  } = useQuery({
+    queryKey: ["newSessionPlanUsage", user?.id, step],
+    queryFn: async () => {
+      const me = await base44.auth.me();
+      const freshPlan = me?.plan || "free";
+      const freshUsed = me?.interviews_used_this_month || 0;
+      const freshLimit = planLimits[freshPlan];
+
+      return {
+        plan: freshPlan,
+        used: freshUsed,
+        limit: freshLimit,
+        atLimit: freshLimit !== Infinity && freshUsed >= freshLimit,
+      };
+    },
+    enabled: step === 3,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
 
   const createMut = useMutation({
-    mutationFn: () =>
-      base44.entities.InterviewSessions.create({
+    mutationFn: async () => {
+      const response = await base44.functions.invoke("createSession", {
         cv_profile_id: cvProfileId,
         ...form,
-        status: "setup",
-      }),
+      });
+
+      const session = response?.session || response?.data?.session;
+      if (!session?.id) {
+        throw new Error(response?.error || "Unable to create session.");
+      }
+
+      return session;
+    },
     onSuccess: (session) => {
       setSessionId(session.id);
       setStep(4);
@@ -74,12 +102,18 @@ export default function NewSession({ user }) {
 
   const handleNext = () => setStep((s) => s + 1);
 
+  const handleConfirm = async () => {
+    const { data: freshUsage } = await refetchUsage();
+    if (freshUsage?.atLimit) return;
+    createMut.mutate();
+  };
+
   const isStep1Valid = !!cvProfileId;
   const isStep2Valid =
-    form.job_title.trim() &&
-    form.company_name.trim() &&
-    form.job_description.trim() &&
-    form.interview_type;
+    !!form.job_title.trim() &&
+    !!form.company_name.trim() &&
+    !!form.job_description.trim() &&
+    !!form.interview_type;
 
   const canNext =
     step === 1 ? isStep1Valid :
@@ -89,10 +123,9 @@ export default function NewSession({ user }) {
   return (
     <div className="max-w-2xl mx-auto">
       {/* Progress indicator */}
-      {step < 4 && (
-        <div className="mb-8">
+      <div className="mb-8">
           <div className="flex items-center gap-2">
-            {STEPS.slice(0, 3).map((s, i) => (
+            {STEPS.map((s, i) => (
               <React.Fragment key={s}>
                 <div className="flex items-center gap-2">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
@@ -108,14 +141,13 @@ export default function NewSession({ user }) {
                     i + 1 === step ? "text-violet-700" : i + 1 < step ? "text-violet-500" : "text-slate-400"
                   }`}>{s}</span>
                 </div>
-                {i < 2 && (
+                {i < STEPS.length - 1 && (
                   <div className={`flex-1 h-0.5 rounded-full transition-all ${i + 1 < step ? "bg-violet-400" : "bg-slate-200"}`} />
                 )}
               </React.Fragment>
             ))}
           </div>
         </div>
-      )}
 
       {/* Step content */}
       <div className="glass-card p-6 md:p-8">
@@ -126,17 +158,19 @@ export default function NewSession({ user }) {
             user={user}
           />
         )}
-        {step === 2 && <StepJobDetails form={form} onChange={handleChange} />}
+        {step === 2 && (
+          <StepJobDetails form={form} onChange={handleChange} />
+        )}
         {step === 3 && (
           <StepReview
             form={form}
             cvProfile={cvProfile}
-            atLimit={atLimit}
-            used={used}
-            limit={limit}
+            atLimit={usage?.atLimit}
+            used={usage?.used ?? 0}
+            limit={usage?.limit ?? planLimits[plan]}
             onEdit={setStep}
-            onConfirm={() => createMut.mutate()}
-            isCreating={createMut.isPending}
+            onConfirm={handleConfirm}
+            isCreating={createMut.isPending || isCheckingLimit}
           />
         )}
         {step === 4 && <StepReady sessionId={sessionId} />}

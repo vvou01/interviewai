@@ -7,7 +7,7 @@ import { Pencil, Loader2, ArrowRight } from "lucide-react";
 const TYPE_BADGES = {
   behavioral: { label: "Behavioral", cls: "bg-blue-100 text-blue-700 border-blue-200" },
   technical:  { label: "Technical",  cls: "bg-purple-100 text-purple-700 border-purple-200" },
-  hr:         { label: "HR Screening", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  hr:         { label: "HR Screening", cls: "bg-green-100 text-green-700 border-green-200" },
   final_round:{ label: "Final Round", cls: "bg-orange-100 text-orange-700 border-orange-200" },
 };
 
@@ -62,8 +62,8 @@ export default function StepReview({ form, cvProfile, atLimit, used, limit, onEd
 
         {/* Job Description */}
         <Section label="Job Description" onEdit={() => onEdit(2)}>
-          <p className="text-sm text-slate-600 leading-relaxed">
-            {form.job_description.slice(0, 200)}{form.job_description.length > 200 ? "…" : ""}
+          <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+            {form.job_description}
           </p>
         </Section>
       </div>

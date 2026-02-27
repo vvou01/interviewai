@@ -4,6 +4,7 @@ import Sidebar from "./components/layout/Sidebar";
 import MobileNav from "./components/layout/MobileNav";
 
 const publicPages = ["Landing"];
+const focusPages = ["SessionActive"];
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
@@ -27,7 +28,6 @@ export default function Layout({ children, currentPageName }) {
     loadUser();
   }, [currentPageName]);
 
-  // Public pages - no layout
   if (publicPages.includes(currentPageName)) {
     return <>{children}</>;
   }
@@ -43,6 +43,14 @@ export default function Layout({ children, currentPageName }) {
           </div>
           <p className="text-sm text-slate-400">Loading...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (focusPages.includes(currentPageName)) {
+    return (
+      <div className="min-h-screen bg-slate-50 overflow-hidden">
+        {React.cloneElement(children, { user })}
       </div>
     );
   }
