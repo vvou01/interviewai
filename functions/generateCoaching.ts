@@ -17,11 +17,11 @@ Deno.serve(async (req) => {
     }
 
     // Get session and CV profile
-    const sessions = await base44.entities.InterviewSessions.filter({ id: session_id });
+    const sessions = await base44.entities.InterviewSessions.filter({ id: session_id, created_by: user.id });
     const session = sessions[0];
     if (!session) return Response.json({ error: 'Session not found' }, { status: 404 });
 
-    const cvProfiles = await base44.entities.CVProfiles.filter({ id: session.cv_profile_id });
+    const cvProfiles = await base44.entities.CVProfiles.filter({ id: session.cv_profile_id, created_by: user.id });
     const cvProfile = cvProfiles[0];
 
     const prompt = `You are an expert interview coach providing REAL-TIME coaching to a job candidate during their interview.

@@ -13,6 +13,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'session_id and audio_base64 are required' }, { status: 400 });
     }
 
+    const sessions = await base44.entities.InterviewSessions.filter({ id: session_id, created_by: user.id });
+    const session = sessions[0];
+    if (!session) return Response.json({ error: 'Session not found' }, { status: 404 });
+
     // Decode base64 audio
     const audioBytes = Uint8Array.from(atob(audio_base64), c => c.charCodeAt(0));
 

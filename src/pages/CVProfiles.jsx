@@ -3,7 +3,6 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, FileText } from "lucide-react";
-import { format } from "date-fns";
 import CVProfileForm from "@/components/cvprofiles/CVProfileForm";
 import CVProfileCard from "@/components/cvprofiles/CVProfileCard";
 import DeleteConfirmDialog from "@/components/cvprofiles/DeleteConfirmDialog";
