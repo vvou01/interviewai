@@ -60,7 +60,7 @@ export default function CVProfileForm({ profile, onSave, onClose, isSaving }) {
               value={form.name}
               onChange={e => set("name", e.target.value)}
               placeholder="e.g., Software Engineer CV"
-              maxLength={55}
+              maxLength={50}
               className={`mt-1.5 ${errors.name ? "border-red-400 focus-visible:ring-red-300" : ""}`}
             />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}

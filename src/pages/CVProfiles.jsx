@@ -21,19 +21,23 @@ export default function CVProfiles({ user }) {
   const [editing, setEditing] = useState(null); // profile object
   const [deleteTarget, setDeleteTarget] = useState(null); // profile object
   const [showTooltip, setShowTooltip] = useState(false);
+  const [actionError, setActionError] = useState("");
   const qc = useQueryClient();
 
   const plan = user?.plan || "free";
   const limit = planLimits[plan];
+  const ownerId = user?.id;
 
   const { data: profiles = [], isLoading } = useQuery({
-    queryKey: ["cvProfiles"],
-    queryFn: () => base44.entities.CVProfiles.filter({ created_by: user?.email }, "-created_date"),
+    queryKey: ["cvProfiles", ownerId],
+    queryFn: () => base44.entities.CVProfiles.filter({ created_by: ownerId }, "-created_date"),
+    enabled: !!ownerId,
   });
 
   const { data: activeSessions = [] } = useQuery({
-    queryKey: ["activeSessions"],
-    queryFn: () => base44.entities.InterviewSessions.filter({ status: "active" }),
+    queryKey: ["activeSessions", ownerId],
+    queryFn: () => base44.entities.InterviewSessions.filter({ status: "active", created_by: ownerId }),
+    enabled: !!ownerId,
   });
 
   const canCreate = limit === Infinity || profiles.length < limit;
@@ -42,6 +46,20 @@ export default function CVProfiles({ user }) {
 
   const saveMut = useMutation({
     mutationFn: async ({ id, data }) => {
+      if (!ownerId) throw new Error("Unable to verify profile owner");
+
+      if (!id) {
+        const latestProfiles = await base44.entities.CVProfiles.filter({ created_by: ownerId }, "-created_date");
+        if (limit !== Infinity && latestProfiles.length >= limit) {
+          throw new Error(tooltipMsg[plan]);
+        }
+      } else {
+        const ownedProfile = await base44.entities.CVProfiles.filter({ id, created_by: ownerId });
+        if (!ownedProfile?.length) {
+          throw new Error("You can only edit your own CV profiles.");
+        }
+      }
+
       // If set as default, clear others first
       if (data.is_default) {
         for (const p of profiles) {
@@ -53,14 +71,21 @@ export default function CVProfiles({ user }) {
       if (id) {
         return base44.entities.CVProfiles.update(id, data);
       } else {
-        return base44.entities.CVProfiles.create(data);
+        return base44.entities.CVProfiles.create({ ...data, created_by: ownerId });
       }
     },
-    onSuccess: () => { invalidate(); setShowForm(false); setEditing(null); },
+    onSuccess: () => { setActionError(""); invalidate(); setShowForm(false); setEditing(null); },
+    onError: (err) => setActionError(err?.message || "Unable to save CV profile."),
   });
 
   const deleteMut = useMutation({
     mutationFn: async (profile) => {
+      if (!ownerId) throw new Error("Unable to verify profile owner");
+      const ownedProfile = await base44.entities.CVProfiles.filter({ id: profile.id, created_by: ownerId });
+      if (!ownedProfile?.length) {
+        throw new Error("You can only delete your own CV profiles.");
+      }
+
       await base44.entities.CVProfiles.delete(profile.id);
       // Auto-assign default if this was default and others exist
       if (profile.is_default) {
@@ -72,11 +97,11 @@ export default function CVProfiles({ user }) {
         }
       }
     },
-    onSuccess: () => { invalidate(); setDeleteTarget(null); },
+    onSuccess: () => { setActionError(""); invalidate(); setDeleteTarget(null); },
+    onError: (err) => setActionError(err?.message || "Unable to delete CV profile."),
   });
 
   const handleAddClick = () => {
-    if (!canCreate) { setShowTooltip(true); setTimeout(() => setShowTooltip(false), 2500); return; }
     setEditing(null);
     setShowForm(true);
   };
@@ -100,6 +125,9 @@ export default function CVProfiles({ user }) {
         <div className="relative flex-shrink-0">
           <Button
             onClick={handleAddClick}
+            disabled={!canCreate}
+            onMouseEnter={() => !canCreate && setShowTooltip(true)}
+            onMouseLeave={() => !canCreate && setShowTooltip(false)}
             className={`${canCreate ? "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 shadow-sm" : "bg-slate-200 text-slate-400 cursor-not-allowed hover:bg-slate-200"}`}
           >
             <Plus className="w-4 h-4 mr-2" /> Add New Profile
@@ -114,6 +142,10 @@ export default function CVProfiles({ user }) {
       </div>
 
       {/* Plan usage */}
+      {actionError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm px-4 py-3">{actionError}</div>
+      )}
+
       {limit !== Infinity && (
         <div className="flex items-center gap-2">
           <div className="flex gap-1">
