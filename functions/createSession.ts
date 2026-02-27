@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid interview_type' }, { status: 400 });
     }
 
-    const profiles = await base44.entities.CVProfiles.filter({ id: cvProfileId, created_by: user.id });
+    const profiles = await base44.entities.CVProfiles.filter({ id: cvProfileId });
     const profile = profiles?.[0];
 
     if (!profile) {
@@ -49,7 +49,6 @@ Deno.serve(async (req) => {
     }
 
     const session = await base44.entities.InterviewSessions.create({
-      created_by: user.id,
       cv_profile_id: cvProfileId,
       job_title: jobTitle,
       company_name: companyName,
