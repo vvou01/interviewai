@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Check, Key, User, AlertTriangle, RefreshCw } from "lucide-react";
+import { Copy, Check, Key, User, AlertTriangle, RefreshCw, Loader2 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -12,6 +12,7 @@ import {
 export default function Settings({ user }) {
   const [copied, setCopied] = useState(false);
   const [token, setToken] = useState(user?.api_token || "");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => { if (user?.api_token) setToken(user.api_token); }, [user]);
 
@@ -22,6 +23,25 @@ export default function Settings({ user }) {
   };
 
   const copyToken = () => { navigator.clipboard.writeText(token); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      // Delete all sessions and CV profiles for this user, then log out
+      const sessions = await base44.entities.InterviewSessions.list();
+      for (const s of sessions) {
+        await base44.entities.InterviewSessions.delete(s.id);
+      }
+      const cvProfiles = await base44.entities.CVProfiles.list();
+      for (const p of cvProfiles) {
+        await base44.entities.CVProfiles.delete(p.id);
+      }
+      base44.auth.logout(window.location.href);
+    } catch (err) {
+      console.error("Error deleting account:", err);
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -81,7 +101,13 @@ export default function Settings({ user }) {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction className="bg-red-500 hover:bg-red-600">Delete Account</AlertDialogAction>
+              <AlertDialogAction
+                onClick={handleDeleteAccount}
+                disabled={isDeleting}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                {isDeleting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting...</> : "Delete Account"}
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

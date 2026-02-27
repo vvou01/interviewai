@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
@@ -18,11 +18,27 @@ export default function SessionActive({ user }) {
   const navigate = useNavigate();
   const [elapsed, setElapsed] = useState(0);
 
-  const { data: session } = useQuery({
+  const { data: session, refetch: refetchSession } = useQuery({
     queryKey: ["session", sessionId],
     queryFn: async () => { const s = await base44.entities.InterviewSessions.filter({ id: sessionId }); return s[0]; },
     enabled: !!sessionId,
   });
+
+  // Activate session when it loads in "setup" state
+  const activateMut = useMutation({
+    mutationFn: () => base44.entities.InterviewSessions.update(sessionId, {
+      status: "active",
+      started_at: new Date().toISOString(),
+    }),
+    onSuccess: () => refetchSession(),
+  });
+
+  useEffect(() => {
+    if (session && session.status === "setup") {
+      activateMut.mutate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id, session?.status]);
 
   const { data: entries = [] } = useQuery({
     queryKey: ["transcript", sessionId],

@@ -1,4 +1,6 @@
 import React from "react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { Brain, Clock, MessageSquare, AlertTriangle, Lightbulb, Tag, XCircle, HelpCircle } from "lucide-react";
 
 export default function CoachingPanel({ suggestion, isBlurred }) {
@@ -129,9 +131,9 @@ function BlurOverlay() {
         <Brain className="w-10 h-10 text-violet-400 mx-auto mb-3" />
         <h3 className="text-lg font-semibold text-slate-800 mb-1">AI Coaching Locked</h3>
         <p className="text-sm text-slate-500 mb-4">Upgrade to Pro for real-time coaching</p>
-        <a href="/Billing" className="px-5 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 text-white text-sm font-medium">
+        <Link to={createPageUrl("Billing")} className="px-5 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 text-white text-sm font-medium">
           Upgrade Now
-        </a>
+        </Link>
       </div>
     </div>
   );
