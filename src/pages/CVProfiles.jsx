@@ -47,21 +47,24 @@ export default function CVProfiles({ user }) {
     mutationFn: async ({ id, data }) => {
       if (!ownerId) throw new Error("Unable to verify profile owner");
 
+      // Always fetch fresh profiles so ownership check and default-unsetting
+      // use server state, not the potentially stale React query closure.
+      const allProfiles = await base44.entities.CVProfiles.filter({ created_by: ownerId }, "-created_date");
+
       if (!id) {
-        const latestProfiles = await base44.entities.CVProfiles.filter({ created_by: ownerId }, "-created_date");
-        if (limit !== Infinity && latestProfiles.length >= limit) {
+        if (limit !== Infinity && allProfiles.length >= limit) {
           throw new Error(tooltipMsg[plan]);
         }
       } else {
-        const ownedProfile = await base44.entities.CVProfiles.filter({ id, created_by: ownerId });
-        if (!ownedProfile?.length) {
+        const owned = allProfiles.find(p => p.id === id);
+        if (!owned) {
           throw new Error("You can only edit your own CV profiles.");
         }
       }
 
-      // If set as default, clear others first
+      // If set as default, clear others first (sequential awaits — no race condition)
       if (data.is_default) {
-        for (const p of profiles) {
+        for (const p of allProfiles) {
           if (p.is_default && p.id !== id) {
             await base44.entities.CVProfiles.update(p.id, { is_default: false });
           }
@@ -74,7 +77,7 @@ export default function CVProfiles({ user }) {
       }
     },
     onSuccess: () => { setActionError(""); invalidate(); setShowForm(false); setEditing(null); },
-    onError: (err) => setActionError(err?.message || "Unable to save CV profile."),
+    onError: (err) => { console.error("[CVProfiles] Save error:", err); setActionError(err?.message || "Unable to save CV profile."); },
   });
 
   const deleteMut = useMutation({
@@ -86,18 +89,18 @@ export default function CVProfiles({ user }) {
       }
 
       await base44.entities.CVProfiles.delete(profile.id);
-      // Auto-assign default if this was default and others exist
+      // Auto-assign default if this was default and others exist.
+      // Fetch fresh profiles after deletion rather than using the stale closure.
       if (profile.is_default) {
-        const remaining = profiles.filter(p => p.id !== profile.id);
+        const remaining = await base44.entities.CVProfiles.filter({ created_by: ownerId }, "-created_date");
         if (remaining.length > 0) {
-          // oldest = last in "-created_date" list, so last element
           const oldest = [...remaining].sort((a, b) => new Date(a.created_date) - new Date(b.created_date))[0];
           await base44.entities.CVProfiles.update(oldest.id, { is_default: true });
         }
       }
     },
     onSuccess: () => { setActionError(""); invalidate(); setDeleteTarget(null); },
-    onError: (err) => setActionError(err?.message || "Unable to delete CV profile."),
+    onError: (err) => { console.error("[CVProfiles] Delete error:", err); setActionError(err?.message || "Unable to delete CV profile."); },
   });
 
   const handleAddClick = () => {
