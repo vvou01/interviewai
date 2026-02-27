@@ -25,6 +25,7 @@ const SAMPLE_SUGGESTION = {
   structure: [
     { label: "Situation", guidance: "Set the scene briefly — project context and your role" },
     { label: "Task", guidance: "Explain what you were responsible for achieving" },
+    { label: "Action", guidance: "Walk through the key decisions and actions you took" },
     { label: "Result", guidance: "Lead with the outcome — quantify impact where possible" },
   ],
   cv_hook: "Reference your experience at Acme Corp leading the Q3 launch",
@@ -32,7 +33,24 @@ const SAMPLE_SUGGESTION = {
   things_to_avoid: ["Vague answers", "Saying 'we' instead of 'I'"],
   target_duration_seconds: 90,
   follow_up_questions: ["What does success look like in the first 90 days?"],
+  coaching_note: "Stay specific — the interviewer wants concrete examples",
 };
+
+const QUICK_TIPS = [
+  "Listen fully before formulating your answer",
+  "Lead with a clear headline sentence",
+  "Use specific numbers to quantify impact",
+  "End with what you learned or would do differently",
+  "Pause briefly before answering to gather your thoughts",
+  "Speak at a measured pace — clarity beats speed",
+];
+
+// Answer timing reference by question type
+const PACING = [
+  { label: "Behavioral", range: "60–90s", color: "bg-blue-50 text-blue-700 border-blue-100" },
+  { label: "Technical",  range: "90–120s", color: "bg-purple-50 text-purple-700 border-purple-100" },
+  { label: "Situational", range: "45–75s", color: "bg-teal-50 text-teal-700 border-teal-100" },
+];
 
 function TimingBadge({ seconds }) {
   if (!seconds) return null;
@@ -162,6 +180,63 @@ function SuggestionContent({ s }) {
   );
 }
 
+function WaitingPanel() {
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="text-center">
+          <div className="relative mx-auto mb-4 w-12 h-12">
+            <div className="absolute inset-0 rounded-full bg-violet-100 animate-ping opacity-40" />
+            <div className="relative w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center">
+              <Brain className="w-5 h-5 text-violet-400" />
+            </div>
+          </div>
+          <p className="text-sm text-slate-400">Waiting for interviewer…</p>
+          <p className="text-xs text-slate-300 mt-1">AI coaching will appear when a question is detected</p>
+        </div>
+      </div>
+      <div className="border-t border-slate-100 p-4 space-y-2.5 flex-shrink-0">
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">While you wait</p>
+        {QUICK_TIPS.map((tip, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <span className="flex-shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full bg-violet-300" />
+            <p className="text-xs text-slate-500 leading-relaxed">{tip}</p>
+          </div>
+        ))}
+        <div className="mt-2 pt-3 border-t border-slate-100">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Answer timing guide</p>
+          <div className="flex gap-2">
+            {PACING.map((p, i) => (
+              <div key={i} className={`flex-1 text-center rounded-lg py-2 border ${p.color}`}>
+                <p className="text-xs font-bold">{p.range}</p>
+                <p className="text-[10px]">{p.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CoachingFooter({ suggestion }) {
+  if (!suggestion?.created_date) return null;
+  const time = new Date(suggestion.created_date).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return (
+    <div className="px-4 py-3 border-t border-slate-100 flex-shrink-0">
+      <div className="flex items-center justify-between mb-0.5">
+        <span className="text-[10px] text-slate-300">Coaching updated at {time}</span>
+      </div>
+      <p className="text-[10px] text-slate-300 leading-relaxed">
+        Keep listening — new coaching arrives when the next question is detected
+      </p>
+    </div>
+  );
+}
+
 export default function CoachingPanel({ suggestion, isBlurred }) {
   if (isBlurred) {
     return (
@@ -190,25 +265,15 @@ export default function CoachingPanel({ suggestion, isBlurred }) {
   }
 
   if (!suggestion) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative mx-auto mb-4 w-12 h-12">
-            <div className="absolute inset-0 rounded-full bg-violet-100 animate-ping opacity-40" />
-            <div className="relative w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center">
-              <Brain className="w-5 h-5 text-violet-400" />
-            </div>
-          </div>
-          <p className="text-sm text-slate-400">Waiting for interviewer…</p>
-          <p className="text-xs text-slate-300 mt-1">AI coaching will appear when a question is detected</p>
-        </div>
-      </div>
-    );
+    return <WaitingPanel />;
   }
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin">
-      <SuggestionContent s={suggestion} />
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
+        <SuggestionContent s={suggestion} />
+      </div>
+      <CoachingFooter suggestion={suggestion} />
     </div>
   );
 }
