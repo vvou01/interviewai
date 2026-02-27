@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, Sparkles, CreditCard, TrendingUp } from "lucide-react";
+import { Check, Sparkles, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const planLimits = { free: 2, pro: Infinity, pro_plus: Infinity };
