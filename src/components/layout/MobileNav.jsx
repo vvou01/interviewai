@@ -1,18 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import {
-  LayoutDashboard,
-  FileText,
-  Plus,
-  History,
-  Settings,
-  CreditCard,
-  Menu,
-  X,
-  Zap,
-  LogOut
-} from "lucide-react";
+import { LayoutDashboard, FileText, Plus, History, Settings, CreditCard, Menu, X, Zap, LogOut } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const navItems = [
@@ -29,21 +18,21 @@ export default function MobileNav({ currentPage }) {
 
   return (
     <>
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-[#0d1220]/95 backdrop-blur-xl border-b border-white/[0.06] z-50 flex items-center justify-between px-4">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
             <Zap className="w-3.5 h-3.5 text-white" />
           </div>
-          <span className="font-bold text-base">
-            Interview<span className="text-indigo-400">AI</span>
+          <span className="font-bold text-base text-slate-800">
+            Interview<span className="text-violet-600">AI</span>
           </span>
         </div>
-        <button onClick={() => setOpen(!open)} className="text-slate-300">
+        <button onClick={() => setOpen(!open)} className="text-slate-600">
           {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
       </header>
       {open && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-[#0a0e1a]/95 backdrop-blur-xl pt-14">
+        <div className="lg:hidden fixed inset-0 z-40 bg-white pt-14">
           <nav className="p-4 space-y-1">
             {navItems.map((item) => (
               <Link
@@ -51,9 +40,7 @@ export default function MobileNav({ currentPage }) {
                 to={createPageUrl(item.page)}
                 onClick={() => setOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium ${
-                  currentPage === item.page
-                    ? "bg-indigo-500/10 text-indigo-400"
-                    : "text-slate-400"
+                  currentPage === item.page ? "bg-violet-50 text-violet-700" : "text-slate-600"
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -62,7 +49,7 @@ export default function MobileNav({ currentPage }) {
             ))}
             <button
               onClick={() => base44.auth.logout()}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-red-400 w-full"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-red-500 w-full"
             >
               <LogOut className="w-5 h-5" />
               Sign Out
