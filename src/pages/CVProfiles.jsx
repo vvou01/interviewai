@@ -45,39 +45,45 @@ export default function CVProfiles({ user }) {
 
   const saveMut = useMutation({
     mutationFn: async ({ id, data }) => {
-      if (!ownerId) throw new Error("Unable to verify profile owner");
+      // Always fetch fresh user to avoid stale closure / null-user issues
+      const freshUser = await base44.auth.me();
+      if (!freshUser?.id) throw new Error("Not authenticated");
+      const userId = freshUser.id;
 
-      // Always fetch fresh profiles so ownership check and default-unsetting
-      // use server state, not the potentially stale React query closure.
-      const allProfiles = await base44.entities.CVProfiles.filter({ created_by: ownerId }, "-created_date");
+      console.log("[CVProfiles] Save called with:", {
+        name: data.name,
+        cvLength: data.cv_text?.length,
+        userId,
+        isDefault: data.is_default,
+      });
 
-      if (!id) {
-        if (limit !== Infinity && allProfiles.length >= limit) {
-          throw new Error(tooltipMsg[plan]);
-        }
-      } else {
-        const owned = allProfiles.find(p => p.id === id);
-        if (!owned) {
-          throw new Error("You can only edit your own CV profiles.");
-        }
+      // Limit check for new profiles using current cached count
+      if (!id && limit !== Infinity && profiles.length >= limit) {
+        throw new Error(tooltipMsg[plan] || "Profile limit reached");
       }
 
-      // If set as default, clear others first (sequential awaits — no race condition)
+      // If set as default, clear other defaults first (sequential awaits — no race condition)
       if (data.is_default) {
+        const allProfiles = await base44.entities.CVProfiles.filter({ created_by: userId }, "-created_date");
         for (const p of allProfiles) {
           if (p.is_default && p.id !== id) {
             await base44.entities.CVProfiles.update(p.id, { is_default: false });
           }
         }
       }
+
       if (id) {
         return base44.entities.CVProfiles.update(id, data);
       } else {
-        return base44.entities.CVProfiles.create({ ...data, created_by: ownerId });
+        return base44.entities.CVProfiles.create({ ...data, created_by: userId });
       }
     },
     onSuccess: () => { setActionError(""); invalidate(); setShowForm(false); setEditing(null); },
-    onError: (err) => { console.error("[CVProfiles] Save error:", err); setActionError(err?.message || "Unable to save CV profile."); },
+    onError: (err) => {
+      console.error("[CVProfiles] Save FAILED:", err);
+      console.error("[CVProfiles] Error details:", JSON.stringify(err));
+      setActionError(err?.message || "Unable to save CV profile.");
+    },
   });
 
   const deleteMut = useMutation({
