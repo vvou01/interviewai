@@ -15,8 +15,9 @@ export default function History({ user }) {
   const [filter, setFilter] = useState("all");
 
   const { data: sessions = [], isLoading } = useQuery({
-    queryKey: ["allSessions"],
-    queryFn: () => base44.entities.InterviewSessions.list("-created_date"),
+    queryKey: ["allSessions", user?.id],
+    queryFn: () => base44.entities.InterviewSessions.filter({ user_id: user?.id }, "-created_date"),
+    enabled: !!user?.id,
   });
 
   const filtered = filter === "all" ? sessions : sessions.filter((s) => s.status === filter);

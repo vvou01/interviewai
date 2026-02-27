@@ -27,15 +27,25 @@ export default function Settings({ user }) {
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
-      // Delete all sessions and CV profiles for this user, then log out
+      // Delete in dependency order: children before parents
       const sessions = await base44.entities.InterviewSessions.list();
       for (const s of sessions) {
+        // 1. TranscriptEntries
+        const transcripts = await base44.entities.TranscriptEntries.filter({ session_id: s.id });
+        for (const t of transcripts) await base44.entities.TranscriptEntries.delete(t.id);
+        // 2. AISuggestions
+        const suggestions = await base44.entities.AISuggestions.filter({ session_id: s.id });
+        for (const sg of suggestions) await base44.entities.AISuggestions.delete(sg.id);
+        // 3. DebriefReports
+        const reports = await base44.entities.DebriefReports.filter({ session_id: s.id });
+        for (const r of reports) await base44.entities.DebriefReports.delete(r.id);
+        // 4. The session itself
         await base44.entities.InterviewSessions.delete(s.id);
       }
+      // 5. CVProfiles
       const cvProfiles = await base44.entities.CVProfiles.list();
-      for (const p of cvProfiles) {
-        await base44.entities.CVProfiles.delete(p.id);
-      }
+      for (const p of cvProfiles) await base44.entities.CVProfiles.delete(p.id);
+      // 6. Log out (account record deletion handled server-side by Base44)
       base44.auth.logout(window.location.href);
     } catch (err) {
       console.error("Error deleting account:", err);

@@ -1,14 +1,18 @@
 import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/lib/AuthContext";
 import { FileText, Check, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 export default function StepSelectCV({ selectedId, onSelect }) {
+  const { user } = useAuth();
+
   const { data: profiles = [], isLoading } = useQuery({
-    queryKey: ["cvProfiles"],
-    queryFn: () => base44.entities.CVProfiles.list("-created_date"),
+    queryKey: ["cvProfiles", user?.id],
+    queryFn: () => base44.entities.CVProfiles.filter({ user_id: user?.id }, "-created_date"),
+    enabled: !!user?.id,
   });
 
   if (isLoading) return <div className="text-slate-400 py-8 text-center">Loading CV profiles...</div>;

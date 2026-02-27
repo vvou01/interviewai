@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, ArrowRight, Briefcase, Calendar, TrendingUp } from "lucide-react";
+import { Plus, Lock, ArrowRight, Briefcase, Calendar, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import StatusBadge from "@/components/shared/StatusBadge";
 import ScoreBadge from "@/components/shared/ScoreBadge";
@@ -13,14 +13,16 @@ const planLimits = { free: 2, pro: Infinity, pro_plus: Infinity };
 
 export default function Dashboard({ user }) {
   const { data: sessions = [], isLoading } = useQuery({
-    queryKey: ["sessions"],
-    queryFn: () => base44.entities.InterviewSessions.list("-created_date", 5),
+    queryKey: ["sessions", user?.id],
+    queryFn: () => base44.entities.InterviewSessions.filter({ user_id: user?.id }, "-created_date", 5),
+    enabled: !!user?.id,
   });
 
   const plan = user?.plan || "free";
   const used = user?.interviews_used_this_month || 0;
   const limit = planLimits[plan];
   const usagePercent = limit === Infinity ? 0 : (used / limit) * 100;
+  const isAtLimit = limit !== Infinity && used >= limit;
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -31,16 +33,29 @@ export default function Dashboard({ user }) {
           </h1>
           <p className="text-slate-500 mt-1">Ready for your next interview?</p>
         </div>
-        <Link
-          to={createPageUrl("NewSession")}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-semibold hover:from-violet-500 hover:to-purple-500 transition-all shadow-md shadow-violet-200"
-        >
-          <Plus className="w-4 h-4" /> New Interview
-        </Link>
+        {isAtLimit ? (
+          <Link
+            to={createPageUrl("Billing")}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-100 text-slate-500 font-semibold border border-slate-200 hover:bg-slate-200 transition-colors"
+            title="Monthly limit reached — upgrade to continue"
+          >
+            <Lock className="w-4 h-4" /> Limit Reached — Upgrade
+          </Link>
+        ) : (
+          <Link
+            to={createPageUrl("NewSession")}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-semibold hover:from-violet-500 hover:to-purple-500 transition-all shadow-md shadow-violet-200"
+          >
+            <Plus className="w-4 h-4" /> New Interview
+          </Link>
+        )}
       </div>
 
       {plan === "free" && (
-        <UpgradeBanner message="You're on the Free plan — upgrade to Pro for real-time AI coaching during interviews." />
+        <UpgradeBanner message={isAtLimit
+          ? `You've used all ${limit} free interviews this month. Upgrade to Pro for unlimited sessions.`
+          : "You're on the Free plan — upgrade to Pro for real-time AI coaching during interviews."}
+        />
       )}
 
       {/* Stats */}
@@ -53,12 +68,15 @@ export default function Dashboard({ user }) {
             <span className="text-sm text-slate-500">Interviews This Month</span>
           </div>
           <div className="flex items-end gap-2">
-            <span className="text-3xl font-bold text-slate-900">{used}</span>
+            <span className={`text-3xl font-bold ${isAtLimit ? "text-red-500" : "text-slate-900"}`}>{used}</span>
             {limit !== Infinity && <span className="text-sm text-slate-400 mb-1">/ {limit}</span>}
           </div>
           {limit !== Infinity && (
             <div className="mt-3 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full transition-all" style={{ width: `${Math.min(usagePercent, 100)}%` }} />
+              <div
+                className={`h-full rounded-full transition-all ${isAtLimit ? "bg-red-400" : "bg-gradient-to-r from-violet-500 to-purple-500"}`}
+                style={{ width: `${Math.min(usagePercent, 100)}%` }}
+              />
             </div>
           )}
         </div>

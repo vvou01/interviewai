@@ -1,12 +1,19 @@
 import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/lib/AuthContext";
 import { Briefcase, FileText, Tag } from "lucide-react";
 
 const typeLabels = { behavioral: "Behavioral", technical: "Technical", hr: "HR / Screening", final_round: "Final Round" };
 
 export default function StepReview({ form, cvProfileId }) {
-  const { data: profiles = [] } = useQuery({ queryKey: ["cvProfiles"], queryFn: () => base44.entities.CVProfiles.list() });
+  const { user } = useAuth();
+
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["cvProfiles", user?.id],
+    queryFn: () => base44.entities.CVProfiles.filter({ user_id: user?.id }),
+    enabled: !!user?.id,
+  });
   const cv = profiles.find((p) => p.id === cvProfileId);
 
   return (

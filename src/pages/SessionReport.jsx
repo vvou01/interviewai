@@ -15,7 +15,7 @@ export default function SessionReport({ user }) {
 
   const { data: session } = useQuery({
     queryKey: ["session", sessionId],
-    queryFn: async () => { const s = await base44.entities.InterviewSessions.filter({ id: sessionId }); return s[0]; },
+    queryFn: async () => { const s = await base44.entities.InterviewSessions.filter({ id: sessionId, user_id: user?.id }); return s[0]; },
     enabled: !!sessionId,
   });
 

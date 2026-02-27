@@ -1,6 +1,11 @@
-import React from "react";
-import { Check, Sparkles, CreditCard, TrendingUp } from "lucide-react";
+import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { Check, Sparkles, CreditCard, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 
 const planLimits = { free: 2, pro: Infinity, pro_plus: Infinity };
 
@@ -14,6 +19,29 @@ export default function Billing({ user }) {
   const plan = user?.plan || "free";
   const used = user?.interviews_used_this_month || 0;
   const limit = planLimits[plan];
+  const { toast } = useToast();
+
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [targetPlan, setTargetPlan] = useState(null);
+  const [isSigningUp, setIsSigningUp] = useState(false);
+  const alreadyOnWaitlist = !!user?.waitlist_signup;
+
+  const handlePlanClick = (p) => {
+    setTargetPlan(p);
+    setWaitlistOpen(true);
+  };
+
+  const handleWaitlistSignup = async () => {
+    if (alreadyOnWaitlist) { setWaitlistOpen(false); return; }
+    setIsSigningUp(true);
+    try {
+      await base44.auth.updateMe({ waitlist_signup: true });
+      setWaitlistOpen(false);
+      toast({ title: "You're on the waitlist!", description: "We'll email you as soon as billing goes live." });
+    } finally {
+      setIsSigningUp(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -39,6 +67,13 @@ export default function Billing({ user }) {
           </div>
         </div>
       </div>
+
+      {alreadyOnWaitlist && (
+        <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 flex items-center gap-3">
+          <Check className="w-5 h-5 text-violet-600 flex-shrink-0" />
+          <p className="text-sm text-slate-700">You're on the waitlist! We'll email you when paid plans launch.</p>
+        </div>
+      )}
 
       <div>
         <h2 className="font-semibold text-lg mb-4 text-slate-800">{plan === "free" ? "Upgrade Your Plan" : "All Plans"}</h2>
@@ -67,8 +102,11 @@ export default function Billing({ user }) {
                 {isCurrent ? (
                   <div className="text-center py-2.5 rounded-lg bg-slate-100 text-sm text-slate-500 font-medium">Current Plan</div>
                 ) : (
-                  <Button className={`w-full ${p.popular ? "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 shadow-sm" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}>
-                    {p.id === "free" ? "Downgrade" : "Upgrade"}
+                  <Button
+                    onClick={() => handlePlanClick(p)}
+                    className={`w-full ${p.popular ? "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 shadow-sm" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
+                  >
+                    {p.id === "free" ? "Downgrade" : alreadyOnWaitlist ? "On Waitlist ✓" : "Upgrade"}
                   </Button>
                 )}
               </div>
@@ -76,6 +114,36 @@ export default function Billing({ user }) {
           })}
         </div>
       </div>
+
+      <Dialog open={waitlistOpen} onOpenChange={setWaitlistOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+                <Mail className="w-5 h-5 text-violet-600" />
+              </div>
+              <DialogTitle>Payment Coming Soon</DialogTitle>
+            </div>
+            <DialogDescription>
+              {alreadyOnWaitlist
+                ? "You're already on the waitlist! We'll email you as soon as billing goes live."
+                : `We're launching paid plans soon. Join the waitlist for ${targetPlan?.name} and we'll email you the moment it's ready.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setWaitlistOpen(false)}>Close</Button>
+            {!alreadyOnWaitlist && (
+              <Button
+                onClick={handleWaitlistSignup}
+                disabled={isSigningUp}
+                className="bg-gradient-to-r from-violet-600 to-purple-600"
+              >
+                {isSigningUp ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Signing up...</> : "Join Waitlist"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
