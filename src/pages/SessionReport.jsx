@@ -33,7 +33,6 @@ export default function SessionReport({ user }) {
     queryFn: async () => {
       const results = await base44.entities.InterviewSessions.filter({
         id: sessionId,
-        created_by: user?.id,
       });
       return results[0] || null;
     },

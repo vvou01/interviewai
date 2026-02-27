@@ -50,7 +50,7 @@ export default function History({ user }) {
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["history-sessions", user?.email],
-    queryFn: () => base44.entities.InterviewSessions.filter({ created_by: user?.email }, "-created_date"),
+    queryFn: () => base44.entities.InterviewSessions.filter({}, "-created_date"),
     enabled: !!user?.email,
   });
 
