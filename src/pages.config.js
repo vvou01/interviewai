@@ -48,7 +48,6 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import Billing from './pages/Billing';
-import CVProfiles from './pages/CVProfiles';
 import Dashboard from './pages/Dashboard';
 import History from './pages/History';
 import Landing from './pages/Landing';
@@ -57,12 +56,12 @@ import Onboarding from './pages/Onboarding';
 import SessionActive from './pages/SessionActive';
 import SessionReport from './pages/SessionReport';
 import Settings from './pages/Settings';
+import CVProfiles from './pages/CVProfiles';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Billing": Billing,
-    "CVProfiles": CVProfiles,
     "Dashboard": Dashboard,
     "History": History,
     "Landing": Landing,
@@ -71,6 +70,7 @@ export const PAGES = {
     "SessionActive": SessionActive,
     "SessionReport": SessionReport,
     "Settings": Settings,
+    "CVProfiles": CVProfiles,
 }
 
 export const pagesConfig = {

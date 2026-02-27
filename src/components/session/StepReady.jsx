@@ -1,51 +1,79 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Copy, Check, MonitorPlay, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, Copy, Check, ExternalLink } from "lucide-react";
 
 export default function StepReady({ sessionId }) {
   const [copied, setCopied] = useState(false);
-  const handleCopy = () => { navigator.clipboard.writeText(sessionId); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(sessionId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className="space-y-8 text-center max-w-lg mx-auto">
-      <div>
-        <div className="w-16 h-16 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center mx-auto mb-4">
-          <Check className="w-8 h-8 text-emerald-600" />
+    <div className="text-center py-4">
+      {/* Animated checkmark */}
+      <div className={`transition-all duration-700 ease-out ${visible ? "opacity-100 scale-100" : "opacity-0 scale-50"}`}>
+        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-violet-200">
+          <CheckCircle2 className="w-10 h-10 text-white" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-900">Session Ready!</h2>
-        <p className="text-slate-500 mt-2">Your interview session has been created. Here's what to do next.</p>
       </div>
 
-      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
-        <p className="text-sm text-slate-500 mb-2">Session ID</p>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">Your session is ready</h2>
+      <p className="text-slate-500 mb-8">
+        Activate the Chrome extension to start receiving live coaching during your interview.
+      </p>
+
+      {/* Session ID box */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-8">
+        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Session ID</p>
         <div className="flex items-center justify-center gap-3">
-          <code className="text-lg font-mono text-violet-700 bg-violet-50 border border-violet-200 px-4 py-2 rounded-lg">{sessionId}</code>
-          <button onClick={handleCopy} className="p-2 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition">
-            {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+          <span className="font-mono text-lg font-bold text-slate-800 tracking-wider break-all">
+            {sessionId}
+          </span>
+          <button
+            onClick={handleCopy}
+            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              copied
+                ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                : "bg-white text-slate-600 border border-slate-200 hover:border-violet-300 hover:text-violet-700"
+            }`}
+          >
+            {copied ? <><Check className="w-3.5 h-3.5" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
           </button>
         </div>
       </div>
 
-      <div className="space-y-3 text-left">
-        {[
-          { n: 1, title: "Open your Chrome extension", desc: "Click the InterviewAI icon in your browser toolbar" },
-          { n: 2, title: "Enter this Session ID", desc: "Paste it in the extension's session field" },
-          { n: 3, title: "Join your video call & click Start", desc: "AI coaching will appear in the floating overlay" },
-        ].map((s) => (
-          <div key={s.n} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-start gap-3">
-            <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0 text-xs font-bold text-violet-700">{s.n}</div>
-            <div>
-              <p className="text-sm font-medium text-slate-800">{s.title}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{s.desc}</p>
-            </div>
-          </div>
-        ))}
+      {/* Action buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
+        <Link to={createPageUrl(`SessionActive?id=${sessionId}`)}>
+          <Button className="w-full sm:w-auto bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 px-6">
+            <ExternalLink className="w-4 h-4 mr-2" /> View Live Session
+          </Button>
+        </Link>
+        <Link to={createPageUrl("Dashboard")}>
+          <Button variant="outline" className="w-full sm:w-auto text-slate-600 px-6">
+            I'll start later
+          </Button>
+        </Link>
       </div>
 
-      <Link to={createPageUrl(`SessionActive?id=${sessionId}`)} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-semibold hover:from-violet-500 hover:to-purple-500 transition-all shadow-md shadow-violet-200">
-        <MonitorPlay className="w-4 h-4" /> View Live Session <ArrowRight className="w-4 h-4" />
-      </Link>
+      {/* Extension reminder */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-500">
+        Don't have the extension yet?{" "}
+        <a href="#" className="text-violet-600 hover:text-violet-700 font-medium inline-flex items-center gap-1">
+          Install it here <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
     </div>
   );
 }

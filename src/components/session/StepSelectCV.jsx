@@ -1,55 +1,95 @@
 import React from "react";
-import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Check, Plus } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { FileText, Check, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-export default function StepSelectCV({ selectedId, onSelect }) {
+export default function StepSelectCV({ selectedId, onSelect, user }) {
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["cvProfiles"],
-    queryFn: () => base44.entities.CVProfiles.list("-created_date"),
+    queryFn: () => base44.entities.CVProfiles.filter({ created_by: user?.email }, "-created_date"),
   });
 
-  if (isLoading) return <div className="text-slate-400 py-8 text-center">Loading CV profiles...</div>;
+  if (isLoading) {
+    return (
+      <div className="py-12 text-center text-slate-400 text-sm">Loading your CV profiles...</div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-800">Select CV Profile</h2>
-        <p className="text-sm text-slate-500 mt-1">Choose which CV to use for coaching context</p>
-      </div>
+    <div>
+      <h2 className="text-xl font-bold text-slate-900 mb-1">Which CV are you interviewing with?</h2>
+      <p className="text-sm text-slate-500 mb-6">Select the CV profile you want coaching to be based on.</p>
+
       {profiles.length === 0 ? (
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center">
-          <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500 mb-3">No CV profiles yet</p>
-          <Link to={createPageUrl("CVProfiles")} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-100 text-violet-700 text-sm font-medium">
-            <Plus className="w-4 h-4" /> Create CV Profile
+        <div className="text-center py-12">
+          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-8 h-8 text-slate-300" />
+          </div>
+          <h3 className="font-semibold text-slate-700 mb-1">You need a CV profile first</h3>
+          <p className="text-sm text-slate-400 mb-6">Create a CV profile to get personalized coaching during your interviews.</p>
+          <Link to={createPageUrl("CVProfiles")}>
+            <Button className="bg-gradient-to-r from-violet-600 to-purple-600">
+              <Plus className="w-4 h-4 mr-2" /> Create a CV Profile
+            </Button>
           </Link>
         </div>
       ) : (
-        <div className="grid gap-3">
-          {profiles.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => onSelect(p.id)}
-              className={`bg-white border rounded-2xl p-5 text-left flex items-start gap-4 transition-all ${
-                selectedId === p.id ? "border-violet-400 bg-violet-50 shadow-sm" : "border-slate-200 hover:border-violet-200 hover:shadow-sm"
-              }`}
+        <>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {profiles.map((p) => {
+              const isSelected = selectedId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => onSelect(p.id, p)}
+                  className={`relative text-left p-4 rounded-xl border-2 transition-all group ${
+                    isSelected
+                      ? "border-violet-500 bg-violet-50 shadow-sm"
+                      : "border-slate-200 bg-white hover:border-violet-200 hover:shadow-sm"
+                  }`}
+                >
+                  {/* Checkmark overlay */}
+                  {isSelected && (
+                    <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center">
+                      <Check className="w-3.5 h-3.5 text-white" />
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 mb-2 pr-8">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-violet-200" : "bg-slate-100"}`}>
+                      <FileText className={`w-4 h-4 ${isSelected ? "text-violet-700" : "text-slate-400"}`} />
+                    </div>
+                    <span className={`font-semibold text-sm truncate ${isSelected ? "text-violet-900" : "text-slate-800"}`}>
+                      {p.name}
+                    </span>
+                  </div>
+
+                  {p.is_default && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold border border-emerald-200 mb-1.5">
+                      Default
+                    </span>
+                  )}
+
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {p.cv_text?.slice(0, 80)}{p.cv_text?.length > 80 ? "…" : ""}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 text-center">
+            <Link
+              to={createPageUrl("CVProfiles")}
+              className="text-sm text-violet-600 hover:text-violet-700 font-medium inline-flex items-center gap-1"
             >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedId === p.id ? "bg-violet-100" : "bg-slate-100"}`}>
-                {selectedId === p.id ? <Check className="w-5 h-5 text-violet-600" /> : <FileText className="w-5 h-5 text-slate-400" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-medium text-slate-800">{p.name}</h3>
-                  {p.is_default && <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 border border-violet-200">Default</span>}
-                </div>
-                <p className="text-sm text-slate-500 mt-1 line-clamp-2">{p.cv_text}</p>
-              </div>
-            </button>
-          ))}
-        </div>
+              <Plus className="w-3.5 h-3.5" /> Create a new profile
+            </Link>
+          </div>
+        </>
       )}
     </div>
   );
