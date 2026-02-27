@@ -1,161 +1,205 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Calendar, TrendingUp, TrendingDown, CheckCircle2, Copy, Check, Loader2, ArrowLeft, Mail } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import ScoreBadge from "@/components/shared/ScoreBadge";
+import ReportHeader from "@/components/report/ReportHeader";
+import ReportSummary from "@/components/report/ReportSummary";
+import StrongestMoments from "@/components/report/StrongestMoments";
+import MissedOpportunities from "@/components/report/MissedOpportunities";
+import QuestionsAnalysis from "@/components/report/QuestionsAnalysis";
+import ActionItems from "@/components/report/ActionItems";
+import FollowUpEmail from "@/components/report/FollowUpEmail";
+
+const TYPE_LABELS = {
+  behavioral: "Behavioral",
+  technical: "Technical",
+  hr: "HR Screening",
+  final_round: "Final Round",
+};
 
 export default function SessionReport({ user }) {
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get("id");
-  const [copiedEmail, setCopiedEmail] = useState(false);
+  const [waitedLong, setWaitedLong] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
-  const { data: session } = useQuery({
-    queryKey: ["session", sessionId],
-    queryFn: async () => { const s = await base44.entities.InterviewSessions.filter({ id: sessionId }); return s[0]; },
-    enabled: !!sessionId,
+  // Security: fetch only sessions owned by this user
+  const { data: session, isLoading: sessionLoading } = useQuery({
+    queryKey: ["session", sessionId, user?.email],
+    queryFn: async () => {
+      const results = await base44.entities.InterviewSessions.filter({
+        id: sessionId,
+        created_by: user?.email,
+      });
+      return results[0] || null;
+    },
+    enabled: !!sessionId && !!user?.email,
   });
 
-  const { data: reports = [], isLoading } = useQuery({
-    queryKey: ["report", sessionId],
+  const {
+    data: reports = [],
+    isLoading: reportLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["report", sessionId, retryKey],
     queryFn: () => base44.entities.DebriefReports.filter({ session_id: sessionId }),
-    enabled: !!sessionId,
-    refetchInterval: (query) => (!query.state.data || query.state.data.length === 0) ? 5000 : false,
+    enabled: !!sessionId && session !== null,
+    refetchInterval: (query) => {
+      const hasData = query.state.data && query.state.data.length > 0;
+      return hasData ? false : 5000;
+    },
   });
+
+  useEffect(() => {
+    const timer = setTimeout(() => setWaitedLong(true), 120000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const report = reports[0];
+  const isLoading = sessionLoading || (reportLoading && !report);
 
-  if (isLoading || !report) {
+  const handleExport = async () => {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF();
+    const company = session?.company_name || "Company";
+    const jobTitle = session?.job_title || "Interview";
+    let y = 20;
+
+    const addLine = (text, size = 10, bold = false) => {
+      doc.setFontSize(size);
+      const lines = doc.splitTextToSize(text || "", 170);
+      doc.text(lines, 20, y);
+      y += lines.length * (size * 0.45) + 4;
+      if (y > 270) { doc.addPage(); y = 20; }
+    };
+
+    addLine(`${jobTitle} — ${company}`, 18, true);
+    addLine(`Score: ${report.overall_score}/10  |  ${session?.created_date ? format(new Date(session.created_date), "d MMMM yyyy") : ""}`, 11);
+    y += 4;
+    addLine("Interview Summary", 14, true);
+    addLine(report.summary || "", 10);
+    y += 4;
+
+    if (report.strongest_moments?.length) {
+      addLine("What Went Well", 14, true);
+      report.strongest_moments.forEach(m => addLine(`✓ ${m}`));
+      y += 4;
+    }
+
+    if (report.missed_opportunities?.length) {
+      addLine("Areas to Improve", 14, true);
+      report.missed_opportunities.forEach(m => addLine(`⚠ ${m}`));
+      y += 4;
+    }
+
+    if (report.action_items?.length) {
+      addLine("Action Items", 14, true);
+      report.action_items.forEach(item => addLine(`• ${item}`));
+      y += 4;
+    }
+
+    if (report.follow_up_email_draft) {
+      addLine("Follow-Up Email Draft", 14, true);
+      addLine(report.follow_up_email_draft);
+    }
+
+    const filename = `${company}-${jobTitle}-Interview-Report.pdf`
+      .replace(/\s+/g, "-")
+      .replace(/[^a-zA-Z0-9\-_.]/g, "");
+    doc.save(filename);
+  };
+
+  // Not found / unauthorised
+  if (!sessionLoading && session === null) {
     return (
-      <div className="max-w-3xl mx-auto text-center py-20">
-        <Loader2 className="w-10 h-10 text-violet-500 animate-spin mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-slate-800 mb-2">Generating Your Report</h2>
-        <p className="text-sm text-slate-500">Analyzing your interview performance...</p>
+      <div className="max-w-md mx-auto mt-20 text-center glass-card p-10">
+        <AlertCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+        <h2 className="text-lg font-semibold text-slate-800 mb-2">Report not found</h2>
+        <p className="text-sm text-slate-500 mb-6">This report doesn't exist or doesn't belong to you.</p>
+        <Link to={createPageUrl("History")}>
+          <Button variant="outline">← Back to History</Button>
+        </Link>
       </div>
     );
   }
 
-  const copyEmail = () => { navigator.clipboard.writeText(report.follow_up_email_draft || ""); setCopiedEmail(true); setTimeout(() => setCopiedEmail(false), 2000); };
+  // Loading / generating state
+  if (!report) {
+    return (
+      <div className="max-w-xl mx-auto">
+        <Link
+          to={createPageUrl("History")}
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 mb-8 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to History
+        </Link>
 
+        {isError ? (
+          <div className="glass-card p-10 text-center">
+            <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+            <h2 className="text-lg font-semibold text-slate-800 mb-2">Something went wrong</h2>
+            <p className="text-sm text-slate-500 mb-6">We couldn't load your report. Please try again.</p>
+            <Button onClick={() => setRetryKey(k => k + 1)} variant="outline" className="gap-2">
+              <RefreshCw className="w-4 h-4" /> Retry
+            </Button>
+          </div>
+        ) : (
+          <div className="glass-card p-12 text-center">
+            <div className="relative w-16 h-16 mx-auto mb-6">
+              <div className="absolute inset-0 rounded-full bg-violet-100 animate-ping opacity-40" />
+              <div className="relative w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center">
+                <Loader2 className="w-7 h-7 text-violet-500 animate-spin" />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">Generating your debrief...</h2>
+            <p className="text-sm text-slate-500 mb-1">This usually takes 20–30 seconds</p>
+            <p className="text-xs text-slate-400">Claude is analysing your interview transcript...</p>
+            {waitedLong && (
+              <div className="mt-5 inline-block px-4 py-2 rounded-xl bg-amber-50 border border-amber-200">
+                <p className="text-xs text-amber-600 font-medium">Taking longer than usual... still working</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Ready state
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <Link to={createPageUrl("History")} className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition">
+      <Link
+        to={createPageUrl("History")}
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors"
+      >
         <ArrowLeft className="w-4 h-4" /> Back to History
       </Link>
 
-      <div className="glass-card p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <ScoreBadge score={report.overall_score} size="lg" />
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-slate-900">{session?.job_title}</h1>
-          <p className="text-slate-500">{session?.company_name}</p>
-          {session?.created_date && (
-            <p className="text-sm text-slate-400 mt-1 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" />
-              {format(new Date(session.created_date), "MMMM d, yyyy")}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="glass-card p-6">
-        <h2 className="font-semibold text-lg mb-3 text-slate-800">Summary</h2>
-        <p className="text-slate-600 leading-relaxed">{report.summary}</p>
-      </div>
-
+      <ReportHeader
+        session={session}
+        report={report}
+        typeLabel={TYPE_LABELS[session?.interview_type] || session?.interview_type}
+      />
+      <ReportSummary summary={report.summary} />
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="glass-card p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-5 h-5 text-emerald-600" />
-            <h2 className="font-semibold text-slate-800">Strongest Moments</h2>
-          </div>
-          <div className="space-y-2">
-            {(report.strongest_moments || []).map((m, i) => (
-              <div key={i} className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-sm text-slate-700">{m}</div>
-            ))}
-          </div>
-        </div>
-        <div className="glass-card p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingDown className="w-5 h-5 text-amber-600" />
-            <h2 className="font-semibold text-slate-800">Missed Opportunities</h2>
-          </div>
-          <div className="space-y-2">
-            {(report.missed_opportunities || []).map((m, i) => (
-              <div key={i} className="p-3 rounded-xl bg-amber-50 border border-amber-100 text-sm text-slate-700">{m}</div>
-            ))}
-          </div>
-        </div>
+        <StrongestMoments items={report.strongest_moments} />
+        <MissedOpportunities items={report.missed_opportunities} />
       </div>
-
-      {report.questions_analysis && report.questions_analysis.length > 0 && (
-        <div className="glass-card overflow-hidden">
-          <div className="p-5 border-b border-slate-100">
-            <h2 className="font-semibold text-lg text-slate-800">Questions Analysis</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Question</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Quality</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.questions_analysis.map((qa, i) => (
-                  <tr key={i} className="border-b border-slate-50">
-                    <td className="px-5 py-3 text-sm text-slate-700">{qa.question}</td>
-                    <td className="px-5 py-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                        qa.answer_quality === "excellent" ? "bg-emerald-100 text-emerald-700" :
-                        qa.answer_quality === "good" ? "bg-blue-100 text-blue-700" :
-                        qa.answer_quality === "average" ? "bg-amber-100 text-amber-700" :
-                        "bg-red-100 text-red-700"
-                      }`}>{qa.answer_quality}</span>
-                    </td>
-                    <td className="px-5 py-3 text-sm text-slate-500">{qa.notes}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {report.action_items && report.action_items.length > 0 && (
-        <div className="glass-card p-6">
-          <h2 className="font-semibold text-lg mb-4 text-slate-800">Action Items</h2>
-          <div className="space-y-2">
-            {report.action_items.map((item, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50">
-                <CheckCircle2 className="w-4 h-4 text-violet-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-slate-700">{item}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
+      <QuestionsAnalysis questions={report.questions_analysis} />
+      <ActionItems items={report.action_items} sessionId={sessionId} />
       {report.follow_up_email_draft && (
-        <div className="glass-card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Mail className="w-5 h-5 text-violet-600" />
-              <h2 className="font-semibold text-lg text-slate-800">Follow-up Email Draft</h2>
-            </div>
-            <Button variant="ghost" size="sm" onClick={copyEmail} className="text-slate-500">
-              {copiedEmail ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-              <span className="ml-1.5">{copiedEmail ? "Copied" : "Copy"}</span>
-            </Button>
-          </div>
-          <div className="bg-slate-50 rounded-xl p-4 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed border border-slate-200">
-            {report.follow_up_email_draft}
-          </div>
-        </div>
+        <FollowUpEmail draft={report.follow_up_email_draft} />
       )}
+
+      <div className="flex justify-end pb-6">
+        <Button onClick={handleExport} variant="outline" className="gap-2 text-slate-600">
+          <Download className="w-4 h-4" /> Export Report
+        </Button>
+      </div>
     </div>
   );
 }
