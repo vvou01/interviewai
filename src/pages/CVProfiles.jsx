@@ -46,40 +46,25 @@ export default function CVProfiles({ user }) {
   const saveMut = useMutation({
     mutationFn: async (formData) => {
       console.log("[CV DEBUG] mutationFn entered", formData)
-      console.log("[CV] Step 1 - mutationFn entered, formData:", {
-        id: formData.id,
-        name: formData.name,
-        cvLength: formData.cv_text?.length,
-        isDefault: formData.is_default,
-      });
-
-      const me = await base44.auth.me();
-      const userId = me?.id;
-      if (!userId) throw new Error("Not logged in");
-      console.log("[CV] Step 2 - got userId:", userId);
+      console.log("[CV DEBUG] ownerId at save time:", ownerId)
+      if (!ownerId) throw new Error("Not logged in");
 
       if (formData.id) {
-        console.log("[CV] Step 3 - about to UPDATE:", formData.id);
         await base44.entities.CVProfiles.update(formData.id, {
           name: formData.name,
           cv_text: formData.cv_text,
           is_default: formData.is_default ?? false,
         });
-        console.log("[CV] Step 4 - UPDATE successful");
       } else {
-        console.log("[CV] Step 3 - about to CREATE");
         console.log("[CV DEBUG] about to call CVProfiles.create")
         await base44.entities.CVProfiles.create({
           name: formData.name,
           cv_text: formData.cv_text,
           is_default: formData.is_default ?? false,
-          created_by: userId,
+          created_by: ownerId,
         });
         console.log("[CV DEBUG] create returned")
-        console.log("[CV] Step 4 - CREATE successful");
       }
-
-      console.log("[CV] Step 5 - Save complete");
     },
     onSuccess: () => {
       console.log("[CV DEBUG] onSuccess fired")
