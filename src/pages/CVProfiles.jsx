@@ -1,0 +1,202 @@
+import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Plus, FileText, Star, Trash2, Pencil, X, Check } from "lucide-react";
+import UpgradeBanner from "@/components/shared/UpgradeBanner";
+
+const planLimits = { free: 1, pro: 3, pro_plus: Infinity };
+
+export default function CVProfiles({ user }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ name: "", cv_text: "", is_default: false });
+  const qc = useQueryClient();
+
+  const { data: profiles = [], isLoading } = useQuery({
+    queryKey: ["cvProfiles"],
+    queryFn: () => base44.entities.CVProfiles.list("-created_date"),
+  });
+
+  const plan = user?.plan || "free";
+  const limit = planLimits[plan];
+  const canCreate = profiles.length < limit;
+
+  const createMut = useMutation({
+    mutationFn: (data) => base44.entities.CVProfiles.create(data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cvProfiles"] }); resetForm(); },
+  });
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.CVProfiles.update(id, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cvProfiles"] }); resetForm(); },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id) => base44.entities.CVProfiles.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["cvProfiles"] }),
+  });
+
+  const setDefaultMut = useMutation({
+    mutationFn: async (id) => {
+      // Unset all defaults, then set the selected one
+      for (const p of profiles) {
+        if (p.is_default) await base44.entities.CVProfiles.update(p.id, { is_default: false });
+      }
+      await base44.entities.CVProfiles.update(id, { is_default: true });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["cvProfiles"] }),
+  });
+
+  const resetForm = () => {
+    setShowForm(false);
+    setEditing(null);
+    setForm({ name: "", cv_text: "", is_default: false });
+  };
+
+  const handleEdit = (profile) => {
+    setEditing(profile.id);
+    setForm({ name: profile.name, cv_text: profile.cv_text, is_default: profile.is_default });
+    setShowForm(true);
+  };
+
+  const handleSubmit = () => {
+    if (editing) {
+      updateMut.mutate({ id: editing, data: form });
+    } else {
+      createMut.mutate(form);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">CV Profiles</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {profiles.length}{limit !== Infinity ? ` / ${limit}` : ""} profiles
+          </p>
+        </div>
+        {canCreate ? (
+          <Button
+            onClick={() => { resetForm(); setShowForm(true); }}
+            className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-400 hover:to-violet-500"
+          >
+            <Plus className="w-4 h-4 mr-2" /> Add Profile
+          </Button>
+        ) : (
+          <div />
+        )}
+      </div>
+
+      {!canCreate && !showForm && (
+        <UpgradeBanner message={`You've reached the ${limit} CV profile limit for your plan. Upgrade to add more.`} />
+      )}
+
+      {/* Form */}
+      {showForm && (
+        <div className="glass-card p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">{editing ? "Edit" : "New"} CV Profile</h3>
+            <button onClick={resetForm} className="text-slate-500 hover:text-white"><X className="w-4 h-4" /></button>
+          </div>
+          <div>
+            <Label className="text-slate-400 text-sm">Profile Name</Label>
+            <Input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="e.g., Software Engineer CV"
+              className="mt-1.5 bg-white/[0.04] border-white/[0.08] text-white"
+            />
+          </div>
+          <div>
+            <Label className="text-slate-400 text-sm">CV Text</Label>
+            <Textarea
+              value={form.cv_text}
+              onChange={(e) => setForm({ ...form, cv_text: e.target.value })}
+              placeholder="Paste your full CV text here..."
+              className="mt-1.5 min-h-[200px] bg-white/[0.04] border-white/[0.08] text-white"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={form.is_default}
+              onChange={(e) => setForm({ ...form, is_default: e.target.checked })}
+              className="rounded border-white/20"
+            />
+            <label className="text-sm text-slate-400">Set as default profile</label>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={handleSubmit}
+              disabled={!form.name || !form.cv_text}
+              className="bg-gradient-to-r from-indigo-500 to-violet-600"
+            >
+              <Check className="w-4 h-4 mr-2" /> {editing ? "Save Changes" : "Create Profile"}
+            </Button>
+            <Button variant="ghost" onClick={resetForm} className="text-slate-400">Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {/* List */}
+      {isLoading ? (
+        <div className="text-center py-12 text-slate-500">Loading...</div>
+      ) : profiles.length === 0 && !showForm ? (
+        <div className="glass-card p-12 text-center">
+          <FileText className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+          <p className="text-slate-400 mb-1">No CV profiles yet</p>
+          <p className="text-sm text-slate-600">Create your first profile to get started.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {profiles.map((p) => (
+            <div key={p.id} className="glass-card p-5 flex items-start gap-4 glass-card-hover group">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <FileText className="w-5 h-5 text-indigo-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium text-white">{p.name}</h3>
+                  {p.is_default && (
+                    <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 text-xs font-medium border border-indigo-500/20">
+                      Default
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-slate-500 mt-1 line-clamp-2">{p.cv_text}</p>
+              </div>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {!p.is_default && (
+                  <button
+                    onClick={() => setDefaultMut.mutate(p.id)}
+                    className="p-2 rounded-lg hover:bg-white/[0.06] text-slate-500 hover:text-amber-400"
+                    title="Set as default"
+                  >
+                    <Star className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => handleEdit(p)}
+                  className="p-2 rounded-lg hover:bg-white/[0.06] text-slate-500 hover:text-white"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => deleteMut.mutate(p.id)}
+                  className="p-2 rounded-lg hover:bg-white/[0.06] text-slate-500 hover:text-red-400"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
