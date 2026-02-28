@@ -17,8 +17,7 @@ const CONFIG = {
   // Deepgram streaming endpoint
   DEEPGRAM_URL: "wss://api.deepgram.com/v1/listen",
   DEEPGRAM_PARAMS:
-    "encoding=linear16&sample_rate=16000&channels=1" +
-    "&diarize=true&utterance_end_ms=1200&interim_results=true" +
+    "model=nova-2&diarize=true&utterance_end_ms=1200&interim_results=true" +
     "&punctuate=true&smart_format=true",
 
   // Polling intervals (ms)
