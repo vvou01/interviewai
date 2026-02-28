@@ -237,13 +237,14 @@
         deepgramApiKey,
       });
 
-      // Store active session state
+      // Store active session state (including tab ID so Stop targets the right tab)
       isSessionActive = true;
       currentSessionId = sessionId;
 
       await chrome.storage.local.set({
         sessionActive: true,
         sessionId,
+        sessionTabId: tab.id,
       });
 
       showActiveSession(sessionId);
@@ -262,27 +263,25 @@
     stopBtn.disabled = true;
     stopBtn.textContent = "Stopping...";
 
+    // Best-effort: tell the content script to stop (may fail if tab is gone)
     try {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
-
-      if (tab) {
-        await chrome.tabs.sendMessage(tab.id, { type: "STOP_SESSION" });
+      const stored = await chrome.storage.local.get(["sessionTabId"]);
+      const tabId = stored.sessionTabId;
+      if (tabId) {
+        await chrome.tabs.sendMessage(tabId, { type: "STOP_SESSION" });
       }
-
-      await chrome.storage.local.remove(["sessionActive", "sessionId"]);
-      isSessionActive = false;
-      currentSessionId = null;
-
-      showSessionSetup();
     } catch (err) {
-      console.warn("[InterviewAI] Stop session error:", err);
+      console.warn("[InterviewAI] Stop message not delivered:", err.message);
     }
+
+    // Always clean up state regardless of whether the message succeeded
+    await chrome.storage.local.remove(["sessionActive", "sessionId", "sessionTabId"]);
+    isSessionActive = false;
+    currentSessionId = null;
 
     stopBtn.disabled = false;
     stopBtn.textContent = "Stop Session";
+    showSessionSetup();
   });
 
   // ─── Logout ───────────────────────────────────────────────────────────────
@@ -303,6 +302,7 @@
       "userPlan",
       "sessionActive",
       "sessionId",
+      "sessionTabId",
     ]);
   }
 
