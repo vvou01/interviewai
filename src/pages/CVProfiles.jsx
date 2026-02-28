@@ -30,13 +30,13 @@ export default function CVProfiles({ user }) {
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["cvProfiles", ownerId],
     queryFn: () => base44.entities.CVProfiles.filter({ created_by: ownerId }, "-created_date"),
-    enabled: !!user,
+    enabled: !!ownerId,
   });
 
   const { data: activeSessions = [] } = useQuery({
     queryKey: ["activeSessions", ownerId],
     queryFn: () => base44.entities.InterviewSessions.filter({ status: "active", created_by: ownerId }),
-    enabled: !!user,
+    enabled: !!ownerId,
   });
 
   const canCreate = limit === Infinity || profiles.length < limit;

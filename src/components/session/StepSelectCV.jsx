@@ -10,7 +10,7 @@ export default function StepSelectCV({ selectedId, onSelect, user }) {
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["cvProfiles", user?.id],
     queryFn: () => base44.entities.CVProfiles.filter({ created_by: user?.id }, "-created_date"),
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 
   if (isLoading) {

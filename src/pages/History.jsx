@@ -49,9 +49,9 @@ export default function History({ user }) {
   const queryClient = useQueryClient();
 
   const { data: sessions = [], isLoading } = useQuery({
-    queryKey: ["history-sessions", user?.email],
+    queryKey: ["history-sessions", user?.id],
     queryFn: () => base44.entities.InterviewSessions.filter({ created_by: user?.id }, "-created_date"),
-    enabled: !!user?.email,
+    enabled: !!user?.id,
   });
 
   const deleteMutation = useMutation({
