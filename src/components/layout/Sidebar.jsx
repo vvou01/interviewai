@@ -4,11 +4,13 @@ import { createPageUrl } from "@/utils";
 import {
   LayoutDashboard, FileText, Plus, History,
   Settings, CreditCard, ChevronLeft, ChevronRight,
-  Zap, LogOut, User
+  Zap, LogOut, User, Shield
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-const navItems = [
+const HARD_CODED_ADMINS = ["deschepper.wj@gmail.com", "vvouter1@gmail.com"];
+
+const baseNavItems = [
   { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
   { name: "New Session", icon: Plus, page: "NewSession", accent: true },
   { name: "CV Profiles", icon: FileText, page: "CVProfiles" },
@@ -19,6 +21,10 @@ const navItems = [
 
 export default function Sidebar({ currentPage, user }) {
   const [collapsed, setCollapsed] = useState(false);
+  const isAdmin = user?.role === "admin" || HARD_CODED_ADMINS.includes(user?.email || "");
+  const navItems = isAdmin
+    ? [...baseNavItems, { name: "Admin", icon: Shield, page: "Admin" }]
+    : baseNavItems;
 
   return (
     <aside className={`fixed left-0 top-0 h-full z-40 flex flex-col transition-all duration-300 ${collapsed ? "w-[72px]" : "w-[240px]"} bg-white border-r border-slate-200`}>

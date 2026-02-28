@@ -71,7 +71,7 @@ export default function Layout({ children, currentPageName }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <Sidebar currentPage={currentPageName} user={user} />
-      <MobileNav currentPage={currentPageName} />
+      <MobileNav currentPage={currentPageName} user={user} />
       <main className="lg:ml-[240px] pt-14 lg:pt-0 min-h-screen">
         <div className="p-4 md:p-6 lg:p-8">
           {React.cloneElement(children, { user })}
