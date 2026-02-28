@@ -9,8 +9,18 @@ import { Button } from "@/components/ui/button";
 export default function StepSelectCV({ selectedId, onSelect, user }) {
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["cvProfiles", user?.id],
-    queryFn: () => base44.entities.CVProfiles.filter({ created_by: user?.id }, "-created_date"),
-    enabled: !!user?.id,
+    queryFn: async () => {
+      const all = await base44.entities.CVProfiles.filter({}, "-created_date");
+      return all.filter(
+        (p) =>
+          p.created_by === user?.id ||
+          p.created_by === user?.email ||
+          p.created_by?.id === user?.id ||
+          p.created_by?.email === user?.email,
+      );
+    },
+    // Mirror CVProfiles.jsx: enable on !!user so query fires even if user?.id is undefined
+    enabled: !!user,
   });
 
   if (isLoading) {

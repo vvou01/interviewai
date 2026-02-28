@@ -21,8 +21,16 @@ export default function CVProfileCard({ profile, onEdit, onDelete }) {
       </div>
 
       {/* CV preview */}
-      <p className="text-sm text-slate-400 leading-relaxed flex-1">
-        {profile.cv_text?.slice(0, 100)}{profile.cv_text?.length > 100 ? "…" : ""}
+      <p
+        className="text-sm text-slate-400 leading-relaxed flex-1"
+        style={{
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}
+      >
+        {profile.cv_text}
       </p>
 
       {/* Bottom row */}
