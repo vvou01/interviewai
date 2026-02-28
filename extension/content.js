@@ -209,6 +209,8 @@
     const isFinal = data.is_final;
     const words = data.channel?.alternatives?.[0]?.words || [];
 
+    console.log('[InterviewAI] Transcript result:', transcript, 'isFinal:', isFinal);
+
     // Determine speaker from diarization
     if (words.length > 0) {
       const speakerTag = words[0]?.speaker;
@@ -218,12 +220,14 @@
       }
     }
 
-    if (isFinal) {
-      accumulatedText += " " + transcript;
-
-      // Show interim in overlay
+    if (isFinal && transcript.trim().length > 5) {
       const speaker = determineSpeaker(currentSpeaker);
-      updateOverlayListening(speaker, transcript);
+      const timestampSeconds = Math.floor(
+        (Date.now() - sessionStartTime) / 1000
+      );
+      sendTranscriptToBackend(speaker, transcript.trim(), timestampSeconds);
+      updateOverlayTranscript(speaker, transcript.trim());
+      accumulatedText = "";
     }
   }
 
