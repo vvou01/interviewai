@@ -29,11 +29,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
-// ─── Keep Service Worker Alive During Active Session ─────────────────────────
-chrome.alarms.create("keepAlive", { periodInMinutes: 0.4 });
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "keepAlive") {
-    // Ping to keep service worker active
-    chrome.storage.local.get("sessionActive", () => {});
-  }
-});
+// ─── Keep Service Worker Alive ────────────────────────────────────────────────
+const keepAlive = () => setInterval(chrome.runtime.getPlatformInfo, 20e3);
+chrome.runtime.onStartup.addListener(keepAlive);
+keepAlive();
