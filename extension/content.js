@@ -44,7 +44,13 @@
     try {
       updateOverlayState("connecting");
 
-      // 1. Get microphone stream
+      // 1. Create AudioContext first, tied to the message-handler user gesture.
+      // Chrome's autoplay policy grants AudioContext permission at the moment
+      // the gesture fires — any await before construction loses that association.
+      audioContext = new AudioContext({ sampleRate: 16000 });
+      await audioContext.resume();
+
+      // 2. Get microphone stream
       const micStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -55,27 +61,22 @@
         video: false,
       });
 
-      // Ensure AudioContext is running
-      if (audioContext && audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
-
-      // 2. Create AudioContext with mic only (tabCapture not supported in MV3)
-      // Chrome's autoplay policy suspends AudioContext immediately — add a small
-      // delay then explicitly resume so audio actually flows to Deepgram.
-      await new Promise(resolve => setTimeout(resolve, 100));
-      audioContext = new AudioContext({ sampleRate: 16000 });
-      // Chrome requires explicit resume after user gesture
-      await audioContext.resume();
+      // 3. Wire mic into AudioContext
       const destination = audioContext.createMediaStreamDestination();
       const micSource = audioContext.createMediaStreamSource(micStream);
       micSource.connect(destination);
 
-      // 3. Start Deepgram WebSocket
+      // 4. Start Deepgram WebSocket
       await startDeepgramStream(destination.stream);
 
-      // 5. Notify backend session is starting
-      await callBackendFunction(CONFIG.FUNCTIONS.START_SESSION, { session_id: sessionId });
+      // 5. Notify backend session is starting (15 s timeout; retry once on failure)
+      try {
+        await callBackendFunction(CONFIG.FUNCTIONS.START_SESSION, { session_id: sessionId }, 15000);
+      } catch (startErr) {
+        console.warn("[InterviewAI] startSession failed, retrying in 2s:", startErr.message);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await callBackendFunction(CONFIG.FUNCTIONS.START_SESSION, { session_id: sessionId }, 15000);
+      }
 
       isRunning = true;
       sessionStartTime = Date.now();
@@ -287,11 +288,11 @@
     }
   }
 
-  async function callBackendFunction(functionName, payload) {
+  async function callBackendFunction(functionName, payload, timeoutMs = CONFIG.SUGGESTION_TIMEOUT_MS) {
     const controller = new AbortController();
     const timeout = setTimeout(
       () => controller.abort(),
-      CONFIG.SUGGESTION_TIMEOUT_MS
+      timeoutMs
     );
 
     try {
