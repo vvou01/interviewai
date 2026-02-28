@@ -55,8 +55,18 @@
         video: false,
       });
 
+      // Ensure AudioContext is running
+      if (audioContext && audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+
       // 2. Create AudioContext with mic only (tabCapture not supported in MV3)
+      // Chrome's autoplay policy suspends AudioContext immediately — add a small
+      // delay then explicitly resume so audio actually flows to Deepgram.
+      await new Promise(resolve => setTimeout(resolve, 100));
       audioContext = new AudioContext({ sampleRate: 16000 });
+      // Chrome requires explicit resume after user gesture
+      await audioContext.resume();
       const destination = audioContext.createMediaStreamDestination();
       const micSource = audioContext.createMediaStreamSource(micStream);
       micSource.connect(destination);
