@@ -13,10 +13,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'session_id and text are required' }, { status: 400 });
     }
 
-    const sessions = await base44.entities.InterviewSessions.filter({ id: session_id });
-    const session = sessions[0];
-    if (!session) return Response.json({ error: 'Session not found' }, { status: 404 });
-
     // Save the already-transcribed entry (transcription happens client-side via Deepgram)
     await base44.entities.TranscriptEntries.create({
       session_id,
@@ -25,11 +21,6 @@ Deno.serve(async (req) => {
       timestamp_seconds: timestamp_seconds || 0,
       created_by: user.id,
     });
-
-    // Activate session if it's still in setup state
-    if (session.status === 'setup') {
-      await base44.entities.InterviewSessions.update(session_id, { status: 'active' });
-    }
 
     return Response.json({ success: true });
   } catch (error) {
