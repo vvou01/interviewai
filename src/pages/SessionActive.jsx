@@ -44,14 +44,14 @@ export default function SessionActive({ user }) {
 
   // Load session once
   useEffect(() => {
-    if (!sessionId || !user?.id) return;
-    base44.entities.InterviewSessions.filter({ id: sessionId, created_by: user?.id })
+    if (!sessionId || !user) return;
+    base44.entities.InterviewSessions.filter({ id: sessionId })
       .then((res) => {
         if (!res || res.length === 0) { setNotFound(true); return; }
         setSession(res[0]);
         sessionRef.current = res[0];
       });
-  }, [sessionId, user?.id]);
+  }, [sessionId, user]);
 
   // Timer
   useEffect(() => {
@@ -84,13 +84,13 @@ export default function SessionActive({ user }) {
   }, [sessionId, user?.id, isVisible]);
 
   const pollSession = useCallback(async () => {
-    if (!isVisible || !user?.id) return;
-    const res = await base44.entities.InterviewSessions.filter({ id: sessionId, created_by: user?.id });
+    if (!isVisible || !sessionId) return;
+    const res = await base44.entities.InterviewSessions.filter({ id: sessionId });
     if (res && res.length > 0) {
       setSession(res[0]);
       sessionRef.current = res[0];
     }
-  }, [sessionId, user?.id, isVisible]);
+  }, [sessionId, isVisible]);
 
   // While in setup, poll for session status so we auto-detect when the
   // extension connects and transitions the session to "active".

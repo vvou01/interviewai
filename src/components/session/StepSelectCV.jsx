@@ -84,8 +84,16 @@ export default function StepSelectCV({ selectedId, onSelect, user }) {
                     </span>
                   )}
 
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    {p.cv_text?.slice(0, 80)}{p.cv_text?.length > 80 ? "…" : ""}
+                  <p
+                    className="text-xs text-slate-400 leading-relaxed"
+                    style={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {p.cv_text}
                   </p>
                 </button>
               );
