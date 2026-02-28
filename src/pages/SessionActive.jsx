@@ -122,7 +122,8 @@ export default function SessionActive({ user }) {
     try {
       await base44.functions.invoke("endSession", { session_id: sessionId });
       setTimeout(() => navigate(createPageUrl(`SessionReport?id=${sessionId}`)), 2000);
-    } catch {
+    } catch (err) {
+      console.error("[InterviewAI] Failed to end session:", err);
       setIsEnding(false);
     }
   };
