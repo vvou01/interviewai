@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, FileText, Plus, History, Settings, CreditCard, Menu, X, Zap, LogOut } from "lucide-react";
+import { LayoutDashboard, FileText, Plus, History, Settings, CreditCard, Menu, X, Zap, LogOut, Shield } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-const navItems = [
+const HARD_CODED_ADMINS = ["deschepper.wj@gmail.com", "vvouter1@gmail.com"];
+
+const baseNavItems = [
   { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
   { name: "New Session", icon: Plus, page: "NewSession" },
   { name: "CV Profiles", icon: FileText, page: "CVProfiles" },
@@ -13,8 +15,12 @@ const navItems = [
   { name: "Settings", icon: Settings, page: "Settings" },
 ];
 
-export default function MobileNav({ currentPage }) {
+export default function MobileNav({ currentPage, user }) {
   const [open, setOpen] = useState(false);
+  const isAdmin = user?.role === "admin" || HARD_CODED_ADMINS.includes(user?.email || "");
+  const navItems = isAdmin
+    ? [...baseNavItems, { name: "Admin", icon: Shield, page: "Admin" }]
+    : baseNavItems;
 
   return (
     <>
