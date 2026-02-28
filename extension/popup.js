@@ -11,7 +11,6 @@
   // ─── DOM References ──────────────────────────────────────────────────────
   const notConnected = document.getElementById("not-connected");
   const connected = document.getElementById("connected");
-  const tokenInput = document.getElementById("token-input");
   const connectBtn = document.getElementById("connect-btn");
   const sessionIdInput = document.getElementById("session-id-input");
   const startBtn = document.getElementById("start-btn");
@@ -94,20 +93,52 @@
 
   // ─── Connect Account ──────────────────────────────────────────────────────
   connectBtn.addEventListener("click", async () => {
-    const token = tokenInput.value.trim();
-    if (!token) {
-      showError("Please paste your API token");
-      return;
-    }
-
     connectBtn.disabled = true;
     connectBtn.textContent = "Connecting...";
     hideError();
 
+    // Find the interviewcoach.base44.app tab
+    const tabs = await chrome.tabs.query({
+      url: "https://interviewcoach.base44.app/*",
+    });
+
+    if (tabs.length === 0) {
+      showError(
+        "Please open interviewcoach.base44.app in Chrome and log in first."
+      );
+      connectBtn.disabled = false;
+      connectBtn.textContent = "Connect Account";
+      return;
+    }
+
+    // Read JWT from localStorage in that tab
+    let token = null;
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tabs[0].id },
+        func: () => localStorage.getItem("base44_access_token"),
+      });
+      token = results[0]?.result;
+    } catch (e) {
+      showError("Could not read session. Make sure you are logged in to InterviewAI.");
+      connectBtn.disabled = false;
+      connectBtn.textContent = "Connect Account";
+      return;
+    }
+
+    if (!token) {
+      showError(
+        "Not logged in. Please log in to interviewcoach.base44.app first."
+      );
+      connectBtn.disabled = false;
+      connectBtn.textContent = "Connect Account";
+      return;
+    }
+
     const user = await verifyToken(token);
 
     if (!user) {
-      showError("Invalid token. Get your token from InterviewAI Settings.");
+      showError("Session invalid or expired. Please log in to InterviewAI and try again.");
       connectBtn.disabled = false;
       connectBtn.textContent = "Connect Account";
       return;
