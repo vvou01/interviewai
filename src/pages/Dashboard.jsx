@@ -35,19 +35,19 @@ export default function Dashboard({ user }) {
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   const { data: sessions = [], isLoading } = useQuery({
-    queryKey: ["sessions-dashboard", user?.email],
+    queryKey: ["sessions-dashboard", user?.id],
     queryFn: () => base44.entities.InterviewSessions.filter(
       { created_by: user?.id },
       "-created_date",
       5
     ),
-    enabled: !!user?.email,
+    enabled: !!user?.id,
   });
 
   const { data: allSessions = [] } = useQuery({
-    queryKey: ["sessions-all", user?.email],
+    queryKey: ["sessions-all", user?.id],
     queryFn: () => base44.entities.InterviewSessions.filter({ created_by: user?.id }),
-    enabled: !!user?.email,
+    enabled: !!user?.id,
   });
 
   const plan = user?.plan || "free";
