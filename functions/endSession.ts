@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
 
     if (!session_id) return Response.json({ error: 'session_id is required' }, { status: 400 });
 
-    const sessions = await base44.entities.InterviewSessions.filter({ id: session_id, created_by: user.id });
+    const sessions = await base44.entities.InterviewSessions.filter({ id: session_id });
     const session = sessions[0];
     if (!session) return Response.json({ error: 'Session not found' }, { status: 404 });
 
