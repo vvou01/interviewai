@@ -23,7 +23,7 @@ export default function Sidebar({ currentPage, user }) {
   return (
     <aside className={`fixed left-0 top-0 h-full z-40 flex flex-col transition-all duration-300 ${collapsed ? "w-[72px]" : "w-[240px]"} bg-white border-r border-slate-200`}>
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 h-16 border-b border-slate-100">
+      <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3 px-5 h-16 border-b border-slate-100 hover:bg-slate-50 transition-colors">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0">
           <Zap className="w-4 h-4 text-white" />
         </div>
@@ -32,7 +32,7 @@ export default function Sidebar({ currentPage, user }) {
             Interview<span className="text-violet-600">AI</span>
           </span>
         )}
-      </div>
+      </Link>
 
       {/* Nav */}
       <nav className="flex-1 py-4 px-3 space-y-1">
