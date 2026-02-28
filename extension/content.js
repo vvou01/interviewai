@@ -260,32 +260,15 @@
   }
 
   // ─── Backend API Calls ──────────────────────────────────────────────────────
-  async function sendTranscriptToBackend(speaker, text, timestampSeconds) {
-    try {
-      const result = await callBackendFunction(CONFIG.FUNCTIONS.PROCESS_AUDIO, {
-        session_id: sessionId,
-        speaker,
-        text,
-        timestamp_seconds: timestampSeconds,
-      }, 10000);
-
-      if (result?.suggestion) {
-        // Show coaching suggestion in overlay
-        window.dispatchEvent(
-          new CustomEvent("interviewai:suggestion", {
-            detail: result.suggestion,
-          })
-        );
-      }
-
-      if (result?.reason === "upgrade_required") {
-        window.dispatchEvent(
-          new CustomEvent("interviewai:upgrade_required", {})
-        );
-      }
-    } catch (err) {
-      console.warn("[InterviewAI] Transcript send failed:", err.message);
-    }
+  function sendTranscriptToBackend(speaker, text, timestampSeconds) {
+    callBackendFunction(CONFIG.FUNCTIONS.PROCESS_AUDIO, {
+      session_id: sessionId,
+      speaker,
+      text,
+      timestamp_seconds: timestampSeconds,
+    }, 10000).catch(err =>
+      console.warn('[InterviewAI] processAudio failed:', err.message)
+    );
   }
 
   async function callBackendFunction(functionName, payload, timeoutMs = CONFIG.SUGGESTION_TIMEOUT_MS) {
