@@ -357,13 +357,13 @@
 
     try {
       const response = await fetch(
-        `${CONFIG.BASE_URL}/api/functions/${functionName}`,
+        `${CONFIG.APP_URL}/api/functions/${functionName}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
-            "X-App-ID": CONFIG.APP_ID,
+            "X-App-Id": CONFIG.APP_ID,
           },
           body: JSON.stringify(payload),
           signal: controller.signal,

@@ -1,7 +1,8 @@
 // InterviewAI Chrome Extension — Configuration
 // Your Base44 backend URL
 const CONFIG = {
-  BASE_URL: "https://interviewcoach.base44.app",
+  BASE_URL: "https://base44.app",
+  APP_URL: "https://interviewcoach.base44.app",
   APP_ID: "f75959b5-6c17-4fb1-8b4b-dfd9837b8f6e",
 
   // Base44 function names (must match exactly)
