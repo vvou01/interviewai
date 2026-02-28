@@ -3,7 +3,7 @@
 const CONFIG = {
   BASE_URL: "https://base44.app",
   APP_URL: "https://interviewcoach.base44.app",
-  APP_ID: "f75959b5-6c17-4fb1-8b4b-dfd9837b8f6e",
+  APP_ID: "69a159fbcc7ebf3bb498817d",
 
   // Base44 function names (must match exactly)
   FUNCTIONS: {
