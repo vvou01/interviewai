@@ -1,6 +1,6 @@
 // InterviewAI — Content Script
 // Runs inside the meeting tab (Google Meet, Teams, Zoom)
-// Captures mic + tab audio, streams to Deepgram, sends transcript to backend
+// Captures mic audio, streams to Deepgram, sends transcript to backend
 
 (async () => {
   // ─── State ─────────────────────────────────────────────────────────────────
@@ -55,42 +55,13 @@
         video: false,
       });
 
-      // 2. Request tab audio from background
-      const bgResponse = await sendMessageToBackground("GET_TAB_STREAM");
-      if (bgResponse.error) {
-        console.warn(
-          "[InterviewAI] Tab audio unavailable, using mic only:",
-          bgResponse.error
-        );
-      }
-
-      // 3. Create AudioContext and mix streams
+      // 2. Create AudioContext with mic only (tabCapture not supported in MV3)
       audioContext = new AudioContext({ sampleRate: 16000 });
       const destination = audioContext.createMediaStreamDestination();
-
-      // Connect mic
       const micSource = audioContext.createMediaStreamSource(micStream);
       micSource.connect(destination);
 
-      // Try to connect tab audio if available
-      // Tab audio comes through the page's audio output
-      // We capture it using a gain node approach
-      if (bgResponse.success) {
-        try {
-          // Request the tab stream via a different approach
-          // We use the fact that content script can access page audio
-          const tabAudioStream = await captureTabAudio();
-          if (tabAudioStream) {
-            const tabSource =
-              audioContext.createMediaStreamSource(tabAudioStream);
-            tabSource.connect(destination);
-          }
-        } catch (e) {
-          console.warn("[InterviewAI] Could not mix tab audio:", e.message);
-        }
-      }
-
-      // 4. Start Deepgram WebSocket
+      // 3. Start Deepgram WebSocket
       await startDeepgramStream(destination.stream);
 
       // 5. Notify backend session is starting
@@ -122,51 +93,6 @@
     }
   }
 
-  async function captureTabAudio() {
-    // Use Web Audio API to capture what's playing in the tab
-    // This works for browser-based calls where audio plays through the page
-    return new Promise((resolve) => {
-      // Try to get audio from video/audio elements on the page
-      const mediaElements = document.querySelectorAll("audio, video");
-      if (mediaElements.length === 0) {
-        resolve(null);
-        return;
-      }
-
-      const streams = [];
-      mediaElements.forEach((el) => {
-        try {
-          if (el.srcObject) {
-            streams.push(el.srcObject);
-          } else if (el.captureStream) {
-            streams.push(el.captureStream());
-          }
-        } catch (e) {
-          // ignore
-        }
-      });
-
-      if (streams.length === 0) {
-        resolve(null);
-        return;
-      }
-
-      // Merge all media element streams
-      const ctx = new AudioContext({ sampleRate: 16000 });
-      const dest = ctx.createMediaStreamDestination();
-      streams.forEach((s) => {
-        try {
-          const src = ctx.createMediaStreamSource(s);
-          src.connect(dest);
-        } catch (e) {
-          // ignore
-        }
-      });
-
-      resolve(dest.stream);
-    });
-  }
-
   function stopCapture() {
     if (!isRunning) return;
 
@@ -184,7 +110,6 @@
       audioContext = null;
     }
 
-    chrome.runtime.sendMessage({ type: "STOP_CAPTURE" });
     chrome.runtime.sendMessage({
       type: "UPDATE_BADGE",
       text: "",
