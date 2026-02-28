@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useNavigate, Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -29,8 +29,18 @@ export default function SessionActive({ user }) {
   const [elapsed, setElapsed] = useState(0);
   const [isEnding, setIsEnding] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isVisible, setIsVisible] = useState(document.visibilityState !== "hidden");
 
+  const transcriptIntervalRef = useRef(null);
+  const coachingIntervalRef = useRef(null);
   const timerIntervalRef = useRef(null);
+  const sessionRef = useRef(null);
+
+  useEffect(() => {
+    const onVisibilityChange = () => setIsVisible(document.visibilityState !== "hidden");
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
 
   // Load session once
   useEffect(() => {
@@ -39,6 +49,7 @@ export default function SessionActive({ user }) {
       .then((res) => {
         if (!res || res.length === 0) { setNotFound(true); return; }
         setSession(res[0]);
+        sessionRef.current = res[0];
       });
   }, [sessionId, user]);
 
@@ -52,56 +63,67 @@ export default function SessionActive({ user }) {
     return () => clearInterval(timerIntervalRef.current);
   }, [session?.started_at, session?.status]);
 
-  // Subscribe to session updates while in setup so we detect extension connect
+  // Polling — respects visibilityState
+  const pollTranscript = useCallback(async () => {
+    if (!isVisible || sessionRef.current?.status !== "active") return;
+    const data = await base44.entities.TranscriptEntries.filter(
+      { session_id: sessionId },
+      "timestamp_seconds"
+    );
+    setEntries(data);
+  }, [sessionId, isVisible]);
+
+  const pollCoaching = useCallback(async () => {
+    if (!isVisible || sessionRef.current?.status !== "active") return;
+    const data = await base44.entities.AISuggestions.filter(
+      { session_id: sessionId },
+      "-created_date",
+      1
+    );
+    if (data && data.length > 0) setLatestSuggestion(data[0]);
+  }, [sessionId, isVisible]);
+
+  const pollSession = useCallback(async () => {
+    if (!isVisible || !sessionId) return;
+    const res = await base44.entities.InterviewSessions.filter({ id: sessionId });
+    if (res && res.length > 0) {
+      setSession(res[0]);
+      sessionRef.current = res[0];
+    }
+  }, [sessionId, isVisible]);
+
+  // While in setup, poll for session status so we auto-detect when the
+  // extension connects and transitions the session to "active".
   useEffect(() => {
-    if (!session || session.status !== "setup" || !sessionId) return;
-    let unsubscribeSession;
-    (async () => {
-      unsubscribeSession = await base44.entities.InterviewSessions.subscribe(
-        { id: sessionId },
-        (sessions) => {
-          if (sessions[0]) setSession(sessions[0]);
-        }
-      );
-    })();
-    return () => unsubscribeSession?.();
-  }, [session?.status, sessionId]);
+    if (!session || session.status !== "setup") return;
+    const interval = setInterval(pollSession, 500);
+    return () => clearInterval(interval);
+  }, [session?.status, pollSession]);
 
-  // Subscribe to transcript, coaching, and session when active
   useEffect(() => {
-    if (!session || session.status !== "active" || !sessionId) return;
+    if (!session || session.status !== "active") return;
 
-    let unsubscribe, unsubscribeSuggestions, unsubscribeSession;
+    pollTranscript();
+    pollCoaching();
 
-    (async () => {
-      unsubscribe = await base44.entities.TranscriptEntries.subscribe(
-        { session_id: sessionId },
-        (entries) => {
-          setEntries(entries);
-        }
-      );
-
-      unsubscribeSuggestions = await base44.entities.AISuggestions.subscribe(
-        { session_id: sessionId },
-        (suggestions) => {
-          if (suggestions && suggestions.length > 0) setLatestSuggestion(suggestions[0]);
-        }
-      );
-
-      unsubscribeSession = await base44.entities.InterviewSessions.subscribe(
-        { id: sessionId },
-        (sessions) => {
-          if (sessions[0]) setSession(sessions[0]);
-        }
-      );
-    })();
+    transcriptIntervalRef.current = setInterval(pollTranscript, 500);
+    coachingIntervalRef.current = setInterval(pollCoaching, 500);
+    const sessionPollInterval = setInterval(pollSession, 500);
 
     return () => {
-      unsubscribe?.();
-      unsubscribeSuggestions?.();
-      unsubscribeSession?.();
+      clearInterval(transcriptIntervalRef.current);
+      clearInterval(coachingIntervalRef.current);
+      clearInterval(sessionPollInterval);
     };
-  }, [session?.status, sessionId]);
+  }, [session?.status, isVisible]);
+
+  useEffect(() => {
+    if (session?.status === "completed") {
+      clearInterval(transcriptIntervalRef.current);
+      clearInterval(coachingIntervalRef.current);
+      clearInterval(timerIntervalRef.current);
+    }
+  }, [session?.status]);
 
   const handleEnd = async () => {
     setIsEnding(true);
