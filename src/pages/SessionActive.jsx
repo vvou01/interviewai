@@ -96,7 +96,7 @@ export default function SessionActive({ user }) {
   // extension connects and transitions the session to "active".
   useEffect(() => {
     if (!session || session.status !== "setup") return;
-    const interval = setInterval(pollSession, 2000);
+    const interval = setInterval(pollSession, 1500);
     return () => clearInterval(interval);
   }, [session?.status, pollSession]);
 
@@ -106,7 +106,7 @@ export default function SessionActive({ user }) {
     pollTranscript();
     pollCoaching();
 
-    transcriptIntervalRef.current = setInterval(pollTranscript, 3000);
+    transcriptIntervalRef.current = setInterval(pollTranscript, 2000);
     coachingIntervalRef.current = setInterval(pollCoaching, 2000);
     const sessionPollInterval = setInterval(pollSession, 5000);
 

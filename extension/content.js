@@ -267,7 +267,7 @@
         speaker,
         text,
         timestamp_seconds: timestampSeconds,
-      });
+      }, 10000);
 
       if (result?.suggestion) {
         // Show coaching suggestion in overlay
