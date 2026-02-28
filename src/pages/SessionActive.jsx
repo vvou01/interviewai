@@ -45,7 +45,7 @@ export default function SessionActive({ user }) {
   // Load session once
   useEffect(() => {
     if (!sessionId || !user?.email) return;
-    base44.entities.InterviewSessions.filter({ id: sessionId })
+    base44.entities.InterviewSessions.filter({ id: sessionId, created_by: user?.id })
       .then((res) => {
         if (!res || res.length === 0) { setNotFound(true); return; }
         setSession(res[0]);
@@ -67,7 +67,7 @@ export default function SessionActive({ user }) {
   const pollTranscript = useCallback(async () => {
     if (!isVisible || sessionRef.current?.status !== "active") return;
     const data = await base44.entities.TranscriptEntries.filter(
-      { session_id: sessionId },
+      { session_id: sessionId, created_by: user?.id },
       "timestamp_seconds"
     );
     setEntries(data);
@@ -76,7 +76,7 @@ export default function SessionActive({ user }) {
   const pollCoaching = useCallback(async () => {
     if (!isVisible || sessionRef.current?.status !== "active") return;
     const data = await base44.entities.AISuggestions.filter(
-      { session_id: sessionId },
+      { session_id: sessionId, created_by: user?.id },
       "-created_date",
       1
     );
@@ -85,12 +85,20 @@ export default function SessionActive({ user }) {
 
   const pollSession = useCallback(async () => {
     if (!isVisible || !user?.email) return;
-    const res = await base44.entities.InterviewSessions.filter({ id: sessionId });
+    const res = await base44.entities.InterviewSessions.filter({ id: sessionId, created_by: user?.id });
     if (res && res.length > 0) {
       setSession(res[0]);
       sessionRef.current = res[0];
     }
   }, [sessionId, user?.email, isVisible]);
+
+  // While in setup, poll for session status so we auto-detect when the
+  // extension connects and transitions the session to "active".
+  useEffect(() => {
+    if (!session || session.status !== "setup") return;
+    const interval = setInterval(pollSession, 2000);
+    return () => clearInterval(interval);
+  }, [session?.status, pollSession]);
 
   useEffect(() => {
     if (!session || session.status !== "active") return;
