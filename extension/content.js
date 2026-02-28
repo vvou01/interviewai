@@ -65,7 +65,7 @@
       await startDeepgramStream(destination.stream);
 
       // 5. Notify backend session is starting
-      await callBackendFunction(CONFIG.FUNCTIONS.START_SESSION, { sessionId });
+      await callBackendFunction(CONFIG.FUNCTIONS.START_SESSION, { session_id: sessionId });
 
       isRunning = true;
       sessionStartTime = Date.now();
@@ -248,7 +248,7 @@
   async function sendTranscriptToBackend(speaker, text, timestampSeconds) {
     try {
       const result = await callBackendFunction(CONFIG.FUNCTIONS.PROCESS_AUDIO, {
-        sessionId,
+        session_id: sessionId,
         speaker,
         text,
         timestamp_seconds: timestampSeconds,
