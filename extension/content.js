@@ -74,8 +74,14 @@
       // 3. Start Deepgram WebSocket
       await startDeepgramStream(destination.stream);
 
-      // 5. Notify backend session is starting
-      await callBackendFunction(CONFIG.FUNCTIONS.START_SESSION, { session_id: sessionId });
+      // 5. Notify backend session is starting (15 s timeout; retry once on failure)
+      try {
+        await callBackendFunction(CONFIG.FUNCTIONS.START_SESSION, { session_id: sessionId }, 15000);
+      } catch (startErr) {
+        console.warn("[InterviewAI] startSession failed, retrying in 2s:", startErr.message);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await callBackendFunction(CONFIG.FUNCTIONS.START_SESSION, { session_id: sessionId }, 15000);
+      }
 
       isRunning = true;
       sessionStartTime = Date.now();
@@ -287,11 +293,11 @@
     }
   }
 
-  async function callBackendFunction(functionName, payload) {
+  async function callBackendFunction(functionName, payload, timeoutMs = CONFIG.SUGGESTION_TIMEOUT_MS) {
     const controller = new AbortController();
     const timeout = setTimeout(
       () => controller.abort(),
-      CONFIG.SUGGESTION_TIMEOUT_MS
+      timeoutMs
     );
 
     try {
