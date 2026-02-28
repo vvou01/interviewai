@@ -29,8 +29,43 @@ export default function CVProfiles({ user }) {
 
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["cvProfiles", ownerId],
-    queryFn: () => base44.entities.CVProfiles.filter({ created_by: ownerId }, "-created_date"),
-    enabled: !!ownerId,
+    queryFn: async () => {
+      // DEBUG: log user object to check what fields Base44 auth.me() returns
+      console.log("[CV DEBUG] user object from auth.me():", user);
+      console.log("[CV DEBUG] ownerId (user?.id):", ownerId);
+      console.log("[CV DEBUG] user?.email:", user?.email);
+
+      // Fetch all profiles (no created_by filter) so we can inspect the raw shape
+      const all = await base44.entities.CVProfiles.filter({}, "-created_date");
+      console.log("[CV DEBUG] Raw profiles from filter({}):", all);
+      if (all.length > 0) {
+        console.log(
+          "[CV DEBUG] Sample created_by value:",
+          all[0]?.created_by,
+          "| type:",
+          typeof all[0]?.created_by,
+        );
+        console.log(
+          "[CV DEBUG] Does created_by === user?.id?",
+          all[0]?.created_by === ownerId,
+          "| Does created_by === user?.email?",
+          all[0]?.created_by === user?.email,
+        );
+      }
+
+      // Client-side guard: return only this user's profiles while we
+      // determine the exact field format Base44 stores in created_by.
+      // Once confirmed, replace with server-side filter.
+      return all.filter(
+        (p) =>
+          p.created_by === ownerId ||
+          p.created_by === user?.email ||
+          p.created_by?.id === ownerId ||
+          p.created_by?.email === user?.email,
+      );
+    },
+    // Use !!user (not !!ownerId) so the query runs even if user?.id is undefined
+    enabled: !!user,
   });
 
   const { data: activeSessions = [] } = useQuery({
