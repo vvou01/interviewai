@@ -46,17 +46,20 @@ export default function TranscriptPanel({ entries, isActive }) {
           <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? "bg-emerald-400 animate-pulse" : "bg-slate-300"}`} />
           <span className="text-xs text-slate-500">{isActive ? "Listening live" : "Session not active"}</span>
         </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="relative mx-auto mb-4 w-12 h-12">
-              <div className="absolute inset-0 rounded-full bg-slate-100 animate-ping opacity-40" />
-              <div className="relative w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
-                <Mic className="w-5 h-5 text-slate-300" />
+        {isActive && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="relative mx-auto mb-4 w-12 h-12">
+                <div className="absolute inset-0 rounded-full bg-slate-100 animate-ping opacity-40" />
+                <div className="relative w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
+                  <Mic className="w-5 h-5 text-slate-300" />
+                </div>
               </div>
+              <p className="text-sm text-slate-400">Waiting for the conversation to begin…</p>
             </div>
-            <p className="text-sm text-slate-400">Waiting for the conversation to begin…</p>
           </div>
-        </div>
+        )}
+        {!isActive && <div className="flex-1" />}
         <div className="px-4 py-2 border-t border-slate-100 flex-shrink-0">
           <span className="text-[11px] text-slate-400">0 words transcribed</span>
         </div>

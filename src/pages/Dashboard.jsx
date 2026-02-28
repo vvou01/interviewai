@@ -37,7 +37,7 @@ export default function Dashboard({ user }) {
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["sessions-dashboard", user?.email],
     queryFn: () => base44.entities.InterviewSessions.filter(
-      {},
+      { created_by: user?.id },
       "-created_date",
       5
     ),
@@ -46,7 +46,7 @@ export default function Dashboard({ user }) {
 
   const { data: allSessions = [] } = useQuery({
     queryKey: ["sessions-all", user?.email],
-    queryFn: () => base44.entities.InterviewSessions.filter({}),
+    queryFn: () => base44.entities.InterviewSessions.filter({ created_by: user?.id }),
     enabled: !!user?.email,
   });
 

@@ -29,13 +29,13 @@ export default function CVProfiles({ user }) {
 
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["cvProfiles", ownerId],
-    queryFn: () => base44.entities.CVProfiles.filter({}, "-created_date"),
+    queryFn: () => base44.entities.CVProfiles.filter({ created_by: ownerId }, "-created_date"),
     enabled: !!user,
   });
 
   const { data: activeSessions = [] } = useQuery({
     queryKey: ["activeSessions", ownerId],
-    queryFn: () => base44.entities.InterviewSessions.filter({ status: "active" }),
+    queryFn: () => base44.entities.InterviewSessions.filter({ status: "active", created_by: ownerId }),
     enabled: !!user,
   });
 
@@ -92,7 +92,7 @@ export default function CVProfiles({ user }) {
       // Auto-assign default if this was default and others exist.
       // Fetch fresh profiles after deletion rather than using the stale closure.
       if (profile.is_default) {
-        const remaining = await base44.entities.CVProfiles.filter({}, "-created_date");
+        const remaining = await base44.entities.CVProfiles.filter({ created_by: user?.id }, "-created_date");
         if (remaining.length > 0) {
           const oldest = [...remaining].sort((a, b) => new Date(a.created_date) - new Date(b.created_date))[0];
           await base44.entities.CVProfiles.update(oldest.id, { is_default: true });

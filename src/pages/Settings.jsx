@@ -73,11 +73,11 @@ export default function Settings({ user }) {
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== "DELETE") return;
     // Delete all user data then logout
-    const sessions = await base44.entities.InterviewSessions.filter({});
+    const sessions = await base44.entities.InterviewSessions.filter({ created_by: user?.id });
     for (const s of sessions) {
       await base44.entities.InterviewSessions.delete(s.id);
     }
-    const cvs = await base44.entities.CVProfiles.filter({});
+    const cvs = await base44.entities.CVProfiles.filter({ created_by: user?.id });
     for (const cv of cvs) {
       await base44.entities.CVProfiles.delete(cv.id);
     }

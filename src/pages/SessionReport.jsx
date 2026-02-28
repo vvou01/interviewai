@@ -33,6 +33,7 @@ export default function SessionReport({ user }) {
     queryFn: async () => {
       const results = await base44.entities.InterviewSessions.filter({
         id: sessionId,
+        created_by: user?.id,
       });
       return results[0] || null;
     },
@@ -44,7 +45,7 @@ export default function SessionReport({ user }) {
     isError,
   } = useQuery({
     queryKey: ["report", sessionId, retryKey],
-    queryFn: () => base44.entities.DebriefReports.filter({ session_id: sessionId }),
+    queryFn: () => base44.entities.DebriefReports.filter({ session_id: sessionId, created_by: user?.id }),
     enabled: !!sessionId && sessionFetched && !!session,
     refetchInterval: (query) => {
       const hasData = query.state.data && query.state.data.length > 0;
