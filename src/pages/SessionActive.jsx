@@ -67,21 +67,21 @@ export default function SessionActive({ user }) {
   const pollTranscript = useCallback(async () => {
     if (!isVisible || sessionRef.current?.status !== "active") return;
     const data = await base44.entities.TranscriptEntries.filter(
-      { session_id: sessionId, created_by: user?.id },
+      { session_id: sessionId },
       "timestamp_seconds"
     );
     setEntries(data);
-  }, [sessionId, user?.id, isVisible]);
+  }, [sessionId, isVisible]);
 
   const pollCoaching = useCallback(async () => {
     if (!isVisible || sessionRef.current?.status !== "active") return;
     const data = await base44.entities.AISuggestions.filter(
-      { session_id: sessionId, created_by: user?.id },
+      { session_id: sessionId },
       "-created_date",
       1
     );
     if (data && data.length > 0) setLatestSuggestion(data[0]);
-  }, [sessionId, user?.id, isVisible]);
+  }, [sessionId, isVisible]);
 
   const pollSession = useCallback(async () => {
     if (!isVisible || !sessionId) return;
