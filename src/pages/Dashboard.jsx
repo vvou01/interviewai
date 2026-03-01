@@ -8,8 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import StatusBadge from "@/components/shared/StatusBadge";
 import ScoreBadge from "@/components/shared/ScoreBadge";
 import { Button } from "@/components/ui/button";
-
-const planLimits = { free: 2, pro: Infinity, pro_plus: Infinity };
+import { getInterviewPlanLimits } from "@/lib/admin-settings";
 
 const TYPE_LABELS = {
   behavioral: "Behavioral",
@@ -50,6 +49,7 @@ export default function Dashboard({ user }) {
     enabled: !!user?.id,
   });
 
+  const planLimits = getInterviewPlanLimits();
   const plan = user?.plan || "free";
   const used = user?.interviews_used_this_month || 0;
   const limit = planLimits[plan];

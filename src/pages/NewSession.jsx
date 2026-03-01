@@ -8,10 +8,9 @@ import StepSelectCV from "@/components/session/StepSelectCV";
 import StepJobDetails from "@/components/session/StepJobDetails";
 import StepReview from "@/components/session/StepReview";
 import StepReady from "@/components/session/StepReady";
+import { getInterviewPlanLimits } from "@/lib/admin-settings";
 
 const STEPS = ["CV Profile", "Job Details", "Review", "Ready"];
-
-const planLimits = { free: 2, pro: Infinity, pro_plus: Infinity };
 
 export default function NewSession({ user }) {
   const [step, setStep] = useState(1);
@@ -43,6 +42,7 @@ export default function NewSession({ user }) {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
 
+  const planLimits = getInterviewPlanLimits();
   const plan = user?.plan || "free";
 
   const {

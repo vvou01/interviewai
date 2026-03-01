@@ -2,8 +2,7 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Check, Sparkles, CreditCard, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const planLimits = { free: 2, pro: Infinity, pro_plus: Infinity };
+import { getInterviewPlanLimits } from "@/lib/admin-settings";
 
 const PLAN_BADGE = {
   free: "bg-slate-100 text-slate-600",
@@ -11,58 +10,60 @@ const PLAN_BADGE = {
   pro_plus: "bg-purple-100 text-purple-700",
 };
 
-const plans = [
-  {
-    id: "free",
-    name: "Free",
-    price: "€0",
-    period: "forever",
-    features: [
-      "2 interviews/month",
-      "Transcript capture only",
-      "Basic debrief report",
-      "1 CV profile",
-      "No live coaching",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "€19",
-    period: "/month",
-    popular: true,
-    features: [
-      "Unlimited interviews",
-      "Live AI coaching (all 4 layers)",
-      "Full debrief reports",
-      "Up to 3 CV profiles",
-      "Answer frameworks & CV hooks",
-    ],
-  },
-  {
-    id: "pro_plus",
-    name: "Pro+",
-    price: "€35",
-    period: "/month",
-    features: [
-      "Everything in Pro",
-      "Unlimited CV profiles",
-      "Salary negotiation mode",
-      "Priority AI speed",
-    ],
-  },
-];
-
-const PLAN_FEATURES = {
-  free: ["2 interviews/month", "Transcript capture only", "Basic debrief report", "1 CV profile"],
-  pro: ["Unlimited interviews", "Live AI coaching (all 4 layers)", "Full debrief reports", "Up to 3 CV profiles"],
-  pro_plus: ["Everything in Pro", "Unlimited CV profiles", "Salary negotiation mode", "Priority AI speed"],
-};
-
 export default function Billing({ user }) {
   const [waitlistModal, setWaitlistModal] = useState(false);
   const [waitlistDone, setWaitlistDone] = useState(false);
 
+  const planLimits = getInterviewPlanLimits();
+  const freeLimitLabel = `${planLimits.free} interviews/month`;
+
+  const plans = [
+    {
+      id: "free",
+      name: "Free",
+      price: "€0",
+      period: "forever",
+      features: [
+        freeLimitLabel,
+        "Transcript capture only",
+        "Basic debrief report",
+        "1 CV profile",
+        "No live coaching",
+      ],
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      price: "€19",
+      period: "/month",
+      popular: true,
+      features: [
+        "Unlimited interviews",
+        "Live AI coaching (all 4 layers)",
+        "Full debrief reports",
+        "Up to 3 CV profiles",
+        "Answer frameworks & CV hooks",
+      ],
+    },
+    {
+      id: "pro_plus",
+      name: "Pro+",
+      price: "€35",
+      period: "/month",
+      features: [
+        "Everything in Pro",
+        "Unlimited CV profiles",
+        "Salary negotiation mode",
+        "Priority AI speed",
+      ],
+    },
+  ];
+
+  const planFeatures = {
+    free: [freeLimitLabel, "Transcript capture only", "Basic debrief report", "1 CV profile"],
+    pro: ["Unlimited interviews", "Live AI coaching (all 4 layers)", "Full debrief reports", "Up to 3 CV profiles"],
+    pro_plus: ["Everything in Pro", "Unlimited CV profiles", "Salary negotiation mode", "Priority AI speed"],
+  };
   const plan = user?.plan || "free";
   const used = user?.interviews_used_this_month || 0;
   const limit = planLimits[plan];
@@ -103,7 +104,7 @@ export default function Billing({ user }) {
               </span>
             </div>
             <ul className="mt-4 space-y-1.5">
-              {(PLAN_FEATURES[plan] || []).map(f => (
+              {(planFeatures[plan] || []).map(f => (
                 <li key={f} className="flex items-center gap-2 text-sm text-slate-600">
                   <Check className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" /> {f}
                 </li>
