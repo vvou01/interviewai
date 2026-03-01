@@ -26,11 +26,21 @@ Deno.serve(async (req) => {
     if (existing?.[0]) {
       await base44.entities.DebriefReports.update(existing[0].id, { summary });
     } else {
-      await base44.entities.DebriefReports.create({ session_id: SETTINGS_ID, summary });
+      await base44.entities.DebriefReports.create({
+        session_id: SETTINGS_ID,
+        summary,
+        overall_score: 0,
+        strongest_moments: [],
+        missed_opportunities: [],
+        questions_analysis: [],
+        action_items: [],
+        follow_up_email_draft: '',
+      });
     }
 
     return Response.json({ success: true, settings });
   } catch (error) {
+    console.error('saveAppSettings error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
