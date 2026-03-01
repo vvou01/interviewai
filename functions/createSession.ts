@@ -1,11 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-const PLAN_LIMITS: Record<string, number> = {
-  free: 2,
-  pro: Number.POSITIVE_INFINITY,
-  pro_plus: Number.POSITIVE_INFINITY,
-};
-
+const SETTINGS_SENTINEL = '__APP_SETTINGS__';
 const ALLOWED_INTERVIEW_TYPES = new Set(['behavioral', 'technical', 'hr', 'final_round']);
 
 Deno.serve(async (req) => {
@@ -42,7 +37,24 @@ Deno.serve(async (req) => {
     const freshUser = await base44.auth.me();
     const plan = freshUser?.plan || 'free';
     const used = freshUser?.interviews_used_this_month || 0;
-    const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
+
+    // Load dynamic free plan limit from app settings
+    let freePlanLimit = 2;
+    try {
+      const settingsRecords = await base44.entities.DebriefReports.filter({ session_id: SETTINGS_SENTINEL });
+      if (settingsRecords?.length > 0) {
+        const s = JSON.parse(settingsRecords[0].summary || '{}');
+        if (typeof s.free_plan_session_limit === 'number') freePlanLimit = s.free_plan_session_limit;
+      }
+    } catch { /* use default */ }
+
+    const planLimits: Record<string, number> = {
+      free: freePlanLimit,
+      pro: Number.POSITIVE_INFINITY,
+      pro_plus: Number.POSITIVE_INFINITY,
+    };
+
+    const limit = planLimits[plan] ?? freePlanLimit;
 
     if (Number.isFinite(limit) && used >= limit) {
       return Response.json({ error: 'Plan interview limit reached' }, { status: 403 });

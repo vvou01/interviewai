@@ -11,8 +11,6 @@ import StepReady from "@/components/session/StepReady";
 
 const STEPS = ["CV Profile", "Job Details", "Review", "Ready"];
 
-const planLimits = { free: 2, pro: Infinity, pro_plus: Infinity };
-
 export default function NewSession({ user }) {
   const [step, setStep] = useState(1);
   const [cvProfileId, setCvProfileId] = useState("");
@@ -45,6 +43,13 @@ export default function NewSession({ user }) {
 
   const plan = user?.plan || "free";
 
+  const { data: appSettings } = useQuery({
+    queryKey: ["appSettings"],
+    queryFn: () => base44.functions.invoke("getAppSettings"),
+    enabled: !!user?.id,
+    staleTime: 60_000,
+  });
+
   const {
     data: usage,
     isFetching: isCheckingLimit,
@@ -55,7 +60,8 @@ export default function NewSession({ user }) {
       const me = await base44.auth.me();
       const freshPlan = me?.plan || "free";
       const freshUsed = me?.interviews_used_this_month || 0;
-      const freshLimit = planLimits[freshPlan];
+      const freeLimit = appSettings?.free_plan_session_limit ?? 2;
+      const freshLimit = freshPlan === "free" ? freeLimit : Infinity;
 
       return {
         plan: freshPlan,
@@ -167,7 +173,7 @@ export default function NewSession({ user }) {
             cvProfile={cvProfile}
             atLimit={usage?.atLimit}
             used={usage?.used ?? 0}
-            limit={usage?.limit ?? planLimits[plan]}
+            limit={usage?.limit ?? (plan === "free" ? (appSettings?.free_plan_session_limit ?? 2) : Infinity)}
             onEdit={setStep}
             onConfirm={handleConfirm}
             isCreating={createMut.isPending || isCheckingLimit}

@@ -9,8 +9,6 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import ScoreBadge from "@/components/shared/ScoreBadge";
 import { Button } from "@/components/ui/button";
 
-const planLimits = { free: 2, pro: Infinity, pro_plus: Infinity };
-
 const TYPE_LABELS = {
   behavioral: "Behavioral",
   technical: "Technical",
@@ -34,6 +32,13 @@ function getGreeting(name) {
 export default function Dashboard({ user }) {
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
+  const { data: appSettings } = useQuery({
+    queryKey: ["appSettings"],
+    queryFn: () => base44.functions.invoke("getAppSettings"),
+    enabled: !!user?.email,
+    staleTime: 60_000,
+  });
+
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["sessions-dashboard", user?.email],
     queryFn: () => base44.entities.InterviewSessions.filter(
@@ -52,7 +57,8 @@ export default function Dashboard({ user }) {
 
   const plan = user?.plan || "free";
   const used = user?.interviews_used_this_month || 0;
-  const limit = planLimits[plan];
+  const freeLimit = appSettings?.free_plan_session_limit ?? 2;
+  const limit = plan === "free" ? freeLimit : Infinity;
   const atLimit = plan === "free" && used >= limit;
   const usagePercent = limit === Infinity ? 0 : Math.min((used / limit) * 100, 100);
 
