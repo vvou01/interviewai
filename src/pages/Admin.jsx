@@ -9,6 +9,7 @@ import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Table,
   TableBody,
@@ -21,6 +22,12 @@ import {
 const HARD_CODED_ADMINS = ["deschepper.wj@gmail.com", "vvouter1@gmail.com"];
 const PRO_PRICE = 29;
 const PRO_PLUS_PRICE = 79;
+
+const SETTINGS_DEFAULTS = {
+  maintenance_mode: false,
+  signups_enabled: true,
+  free_plan_session_limit: 2,
+};
 
 const formatDate = (value) => {
   if (!value) return "—";
@@ -45,15 +52,11 @@ const wordsInEntry = (text = "") => text.trim().split(/\s+/).filter(Boolean).len
 
 export default function Admin({ user }) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedUserId, setSelectedUserId] = useState("");
-  const [featureFlags, setFeatureFlags] = useState(() => {
-    const cached = localStorage.getItem("admin_feature_flags");
-    return cached
-      ? JSON.parse(cached)
-      : { maintenanceMode: false, signupEnabled: true, freeSessionLimit: 2 };
-  });
+  const [localFlags, setLocalFlags] = useState(SETTINGS_DEFAULTS);
 
   const isAdmin = user?.role === "admin" || HARD_CODED_ADMINS.includes(user?.email || "");
 
@@ -85,6 +88,24 @@ export default function Admin({ user }) {
     enabled: isAdmin,
   });
 
+  const { data: settingsData, isLoading: loadingSettings } = useQuery({
+    queryKey: ["app-settings"],
+    queryFn: () => base44.functions.invoke("getAppSettings", {}),
+    enabled: isAdmin,
+    onSuccess: (data) => {
+      if (data?.settings) {
+        setLocalFlags({ ...SETTINGS_DEFAULTS, ...data.settings });
+      }
+    },
+  });
+
+  // Sync localFlags when settingsData loads
+  useEffect(() => {
+    if (settingsData?.settings) {
+      setLocalFlags({ ...SETTINGS_DEFAULTS, ...settingsData.settings });
+    }
+  }, [settingsData]);
+
   const updatePlanMutation = useMutation({
     mutationFn: async ({ userId, plan }) => {
       const userEntity = base44.entities.Users || base44.entities.User;
@@ -94,6 +115,21 @@ export default function Admin({ user }) {
       return userEntity.update(userId, { plan });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
+  });
+
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (settings) => {
+      const result = await base44.functions.invoke("saveAppSettings", { settings });
+      if (result?.error) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["app-settings"] });
+      toast({ title: "Settings saved", description: "Feature flags updated successfully." });
+    },
+    onError: (err) => {
+      toast({ title: "Save failed", description: err?.message || "Could not save settings.", variant: "destructive" });
+    },
   });
 
   const filteredUsers = useMemo(() => {
@@ -146,12 +182,6 @@ export default function Admin({ user }) {
     };
   }, [users, transcriptEntries]);
 
-  const setFlag = (key, value) => {
-    const next = { ...featureFlags, [key]: value };
-    setFeatureFlags(next);
-    localStorage.setItem("admin_feature_flags", JSON.stringify(next));
-  };
-
   if (!isAdmin) {
     return (
       <div className="max-w-3xl mx-auto">
@@ -173,6 +203,7 @@ export default function Admin({ user }) {
         <p className="text-slate-500 mt-1">Manage users, sessions, platform metrics, and feature flags.</p>
       </div>
 
+      {/* User Management */}
       <section className="glass-card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2"><Users className="w-5 h-5 text-violet-600" /> User Management</h2>
@@ -235,6 +266,7 @@ export default function Admin({ user }) {
         </div>
       </section>
 
+      {/* Session Overview */}
       <section id="session-overview" className="glass-card p-5 space-y-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2"><BarChart3 className="w-5 h-5 text-violet-600" /> Session Overview</h2>
@@ -298,49 +330,85 @@ export default function Admin({ user }) {
         </div>
       </section>
 
+      {/* Platform Stats */}
       <section className="glass-card p-5 space-y-4">
         <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2"><BarChart3 className="w-5 h-5 text-violet-600" /> Platform Stats</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs text-slate-400 uppercase">Total users</p><p className="text-xl font-semibold text-slate-900">{platformStats.totalUsers}</p><p className="text-sm text-slate-500 mt-1">Free {platformStats.freeUsers} / Pro {platformStats.proUsers} / Pro+ {platformStats.proPlusUsers}</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs text-slate-400 uppercase">Transcript entries</p><p className="text-xl font-semibold text-slate-900">{loadingTranscripts ? "…" : platformStats.transcriptCount}</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs text-slate-400 uppercase">Total words transcribed</p><p className="text-xl font-semibold text-slate-900">{loadingTranscripts ? "…" : platformStats.totalWords.toLocaleString()}</p></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs text-slate-400 uppercase">Revenue estimate / month</p><p className="text-xl font-semibold text-slate-900">${platformStats.revenueEstimate.toLocaleString()}</p><p className="text-sm text-slate-500 mt-1">Assumes ${PRO_PRICE}/Pro and ${PRO_PLUS_PRICE}/Pro+</p></div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs text-slate-400 uppercase">Total users</p>
+            <p className="text-xl font-semibold text-slate-900">{platformStats.totalUsers}</p>
+            <p className="text-sm text-slate-500 mt-1">Free {platformStats.freeUsers} / Pro {platformStats.proUsers} / Pro+ {platformStats.proPlusUsers}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs text-slate-400 uppercase">Transcript entries</p>
+            <p className="text-xl font-semibold text-slate-900">{loadingTranscripts ? "…" : platformStats.transcriptCount}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs text-slate-400 uppercase">Total words transcribed</p>
+            <p className="text-xl font-semibold text-slate-900">{loadingTranscripts ? "…" : platformStats.totalWords.toLocaleString()}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs text-slate-400 uppercase">Revenue estimate / month</p>
+            <p className="text-xl font-semibold text-slate-900">${platformStats.revenueEstimate.toLocaleString()}</p>
+            <p className="text-sm text-slate-500 mt-1">Assumes ${PRO_PRICE}/Pro and ${PRO_PLUS_PRICE}/Pro+</p>
+          </div>
         </div>
       </section>
 
+      {/* Feature Flags */}
       <section className="glass-card p-5 space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2"><SlidersHorizontal className="w-5 h-5 text-violet-600" /> Feature Flags</h2>
-        <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-slate-800">Maintenance mode</p>
-              <p className="text-sm text-slate-500">When enabled, non-admin users should be blocked from the app.</p>
-            </div>
-            <Switch checked={featureFlags.maintenanceMode} onCheckedChange={(value) => setFlag("maintenanceMode", value)} />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-slate-800">New user signups enabled</p>
-              <p className="text-sm text-slate-500">Toggle onboarding availability for new users.</p>
-            </div>
-            <Switch checked={featureFlags.signupEnabled} onCheckedChange={(value) => setFlag("signupEnabled", value)} />
-          </div>
-
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-medium text-slate-800">Free plan session limit</p>
-              <p className="text-sm text-slate-500">Editable cap for free plan monthly sessions.</p>
-            </div>
-            <Input
-              type="number"
-              min={0}
-              className="w-24"
-              value={featureFlags.freeSessionLimit}
-              onChange={(e) => setFlag("freeSessionLimit", Number(e.target.value || 0))}
-            />
-          </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2"><SlidersHorizontal className="w-5 h-5 text-violet-600" /> Feature Flags</h2>
+          <Button
+            onClick={() => saveSettingsMutation.mutate(localFlags)}
+            disabled={saveSettingsMutation.isPending || loadingSettings}
+            className="bg-violet-600 hover:bg-violet-500 text-white"
+          >
+            {saveSettingsMutation.isPending ? "Saving…" : "Save"}
+          </Button>
         </div>
+
+        {loadingSettings ? (
+          <p className="text-sm text-slate-400">Loading settings…</p>
+        ) : (
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-slate-800">Maintenance mode</p>
+                <p className="text-sm text-slate-500">When enabled, non-admin users should be blocked from the app.</p>
+              </div>
+              <Switch
+                checked={localFlags.maintenance_mode}
+                onCheckedChange={(value) => setLocalFlags((f) => ({ ...f, maintenance_mode: value }))}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-slate-800">New user signups enabled</p>
+                <p className="text-sm text-slate-500">Toggle onboarding availability for new users.</p>
+              </div>
+              <Switch
+                checked={localFlags.signups_enabled}
+                onCheckedChange={(value) => setLocalFlags((f) => ({ ...f, signups_enabled: value }))}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-medium text-slate-800">Free plan session limit</p>
+                <p className="text-sm text-slate-500">Editable cap for free plan monthly sessions.</p>
+              </div>
+              <Input
+                type="number"
+                min={0}
+                className="w-24"
+                value={localFlags.free_plan_session_limit}
+                onChange={(e) => setLocalFlags((f) => ({ ...f, free_plan_session_limit: Number(e.target.value || 0) }))}
+              />
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
