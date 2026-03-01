@@ -4,7 +4,7 @@ import { createPageUrl } from "@/utils";
 import {
   LayoutDashboard, FileText, Plus, History,
   Settings, CreditCard, ChevronLeft, ChevronRight,
-  Zap, LogOut, User, Shield
+  Zap, LogOut, User, Shield, Home
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
@@ -62,6 +62,17 @@ export default function Sidebar({ currentPage, user }) {
           );
         })}
       </nav>
+
+      {/* Visit Homepage */}
+      <div className="px-3 pb-2">
+        <Link
+          to="/"
+          className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 ${collapsed ? "justify-center" : ""}`}
+        >
+          <Home className="w-4 h-4 flex-shrink-0" />
+          {!collapsed && <span>Visit Homepage</span>}
+        </Link>
+      </div>
 
       {/* User section */}
       <div className="p-3 border-t border-slate-100">
