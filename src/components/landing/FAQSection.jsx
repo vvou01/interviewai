@@ -15,7 +15,7 @@ export default function FAQSection() {
   const [open, setOpen] = useState(null);
 
   return (
-    <section className="py-24 px-4 bg-slate-50">
+    <section id="faq" className="py-24 px-4 bg-slate-50">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-slate-900">Frequently Asked <span className="gradient-text">Questions</span></h2>
